@@ -59,21 +59,26 @@ go build ./...     PASS
 
 GitHub Actions **Go Test run #25** for commit `d0fcec6a951b7d47c7bf868dd2d3a52ed35681f2` completed successfully.
 
-### Phase 2.13 Explicit multi-NIC egress interface selection — IMPLEMENTED
+### Phase 2.13 Explicit multi-NIC egress interface selection — BLOCKED BY TARGET-HOST BUILD ERROR
 
-Implemented in `internal/transport/udp_sink.go`:
+The Phase 2.13 implementation was pulled to `inst05`, and the host exposes multiple usable interfaces including:
 
-- Preserved the existing `NewUDPSink(localAddr, remoteAddr)` API.
-- Added `NewUDPSinkWithInterface(localAddr, remoteAddr, interfaceName)`.
-- Validates the requested interface exists and is UP.
-- Resolves an IPv4 address from the selected interface when no explicit local address is supplied.
-- Uses that address as the UDP source address for deterministic unicast routing.
-- Applies `SetMulticastInterface` for multicast destinations.
-- Added unit coverage for invalid interface handling and loopback interface creation.
+```text
+enp1s0  UP  192.168.1.35/24
+enp2s0  UP  192.168.10.25/24
+```
 
-The implementation is designed to remain portable for the current Go CI while providing deterministic interface/address selection on Linux deployments.
+The initial implementation used `UDPConn.SetMulticastInterface`, but `inst05`'s Go 1.24 environment reports that method as unavailable. That implementation was replaced with a Unix socket-level `IP_MULTICAST_IF` helper.
 
-**Phase 2.13 status: 🟡 IMPLEMENTED — TARGET-HOST VERIFICATION PENDING**
+The next target-host build uncovered a second compile error in `internal/transport/udp_sink.go`:
+
+```text
+assignment mismatch: 1 variable but conn.SyscallConn returns 2 values
+```
+
+Therefore Phase 2.13 is **not verified** yet. The target host has not reached a passing `go test`, `go test -race`, or `go build` state for this phase.
+
+**Phase 2.13 status: 🔴 BUILD FIX REQUIRED — TARGET-HOST VERIFICATION PENDING**
 
 ## TSDuck
 
@@ -81,15 +86,23 @@ Phase 1 fixture remains the bitstream acceptance gate and is verified on `inst05
 
 ## Live network test
 
-The UDP loopback integration test is verified. Phase 2.13 now requires explicit Linux multi-NIC/interface validation on the target host before being marked green.
+The UDP loopback integration test is verified. Phase 2.13 explicit multi-NIC egress validation is blocked by the current `SyscallConn()` API usage and must be fixed before live interface testing.
 
 ## Next step
 
-### Phase 2.13 verification on `inst05`
+### Phase 2.13 fix and verification on `inst05`
 
-Pull the latest commit, run the complete Go test/race/build suite, inspect available interfaces, and verify an explicit-interface UDP egress path. Then mark Phase 2.13 verified and proceed to Phase 2.14 live Linux network validation.
+Correct the `SyscallConn()` handling in `internal/transport/udp_sink.go`, pull the fix to `inst05`, and rerun:
 
-After Phase 2.14, proceed to Phase 2.15 transport-density optimization before Phase 3 PSI/SI regeneration and scheduling.
+```text
+go test ./...
+go test -race ./...
+go build ./...
+```
+
+Then perform explicit egress testing on `enp2s0` (`192.168.10.25`) and mark Phase 2.13 verified only after the target-host tests pass.
+
+After Phase 2.13, proceed to Phase 2.14 live Linux network validation, then Phase 2.15 transport-density optimization before Phase 3 PSI/SI regeneration and scheduling.
 
 ## Planned phases
 
