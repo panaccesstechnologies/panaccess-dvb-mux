@@ -22,8 +22,8 @@ func NewUDPSink(localAddr, remoteAddr string) (*UDPSink, error) {
 
 // NewUDPSinkWithInterface creates a sink whose output is explicitly associated
 // with the named network interface. For unicast, the interface's IPv4 address
-// is used as the local source address. For multicast, SetMulticastInterface is
-// also applied so the kernel sends traffic through the requested interface.
+// is used as the local source address. For multicast, the implementation uses
+// the multicast socket's IP_MULTICAST_IF setting through ListenConfig control.
 func NewUDPSinkWithInterface(localAddr, remoteAddr, interfaceName string) (*UDPSink, error) {
 	if interfaceName == "" {
 		return nil, fmt.Errorf("UDP egress interface name is required")
@@ -69,8 +69,9 @@ func newUDPSink(localAddr, remoteAddr, interfaceName string) (*UDPSink, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open UDP sink: %w", err)
 	}
+
 	if iface != nil && remote.IP.IsMulticast() {
-		if err := conn.SetMulticastInterface(iface); err != nil {
+		if err := setIPv4MulticastInterface(conn, iface); err != nil {
 			_ = conn.Close()
 			return nil, fmt.Errorf("set UDP multicast egress interface %q: %w", interfaceName, err)
 		}
@@ -96,6 +97,24 @@ func interfaceIPv4(iface *net.Interface) (net.IP, error) {
 		}
 	}
 	return nil, fmt.Errorf("UDP egress interface %q has no IPv4 address", iface.Name)
+}
+
+// setIPv4MulticastInterface selects the IPv4 interface used for multicast
+// output without relying on UDPConn.SetMulticastInterface, which is not
+// available in the Go networking API used by this repository.
+func setIPv4MulticastInterface(conn *net.UDPConn, iface *net.Interface) error {
+	ip, err := interfaceIPv4(iface)
+	if err != nil {
+		return err
+	}
+	pc := conn.SyscallConn()
+	var controlErr error
+	if err := pc.Control(func(fd uintptr) {
+		controlErr = setIPv4MulticastInterfaceFD(int(fd), ip)
+	}); err != nil {
+		return err
+	}
+	return controlErr
 }
 
 func (s *UDPSink) Close() error {
