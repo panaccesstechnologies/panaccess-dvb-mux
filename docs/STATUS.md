@@ -42,7 +42,7 @@ Acceptance results:
 - Loopback runtime integration test covering UDP ingest and egress.
 - Phase 2.12 RTP sequence-tracker constructor fix.
 - Phase 2.13 explicit UDP egress interface selection for unicast and multicast.
-- Phase 2.14 runtime configuration now exposes `OutputInterface` and selects `NewUDPSinkWithInterface()` when configured, allowing the complete runtime path to explicitly bind egress to a selected Linux NIC.
+- Phase 2.14 `transport-live-test` command for reproducible Linux live-path validation.
 
 ## Phase 2 verification status
 
@@ -100,15 +100,11 @@ Validation scope:
 - Runtime cancellation and clean socket shutdown.
 - Packet capture evidence for input and output traffic.
 
-### Phase 2.14 implementation step — runtime egress interface selection
+A reproducible `cmd/transport-live-test` executable has been added. It exposes input protocol/bind/port, optional input multicast interface, output destination/interface, queue size, aggregation size, target bitrate and test duration. The runtime now selects `NewUDPSinkWithInterface` when `OutputInterface` is configured.
 
-`internal/transport/worker.go` now has an `OutputInterface` configuration field. `NewRuntime()` uses `NewUDPSinkWithInterface()` when this field is non-empty, while preserving the existing default behavior when it is empty.
+The latest `inst05` source verification after pulling the runtime interface-selection change passed `go test ./...`, `go test -race ./...`, and `go build ./...` with no reported errors.
 
-Implementation commit:
-
-`9d1c398f557e80ec9654f43f98dbb53caa87480e`
-
-The earlier live capture on `inst05` demonstrated the selected-interface egress path, but the capture contained **2172 output packets on UDP port 5000 and 0 packets on UDP port 6000**. Therefore it did not yet prove the complete ingest → queue → monitor → egress runtime path.
+The most recent capture contained **2172 output packets** on `239.100.1.1:5000`, each **1316 bytes**, with **0 kernel drops**, but contained **0 packets on input port 6000**. Therefore that capture verifies egress but not the complete ingest → queue → egress path.
 
 **Phase 2.14 status: 🟡 IN PROGRESS — LIVE LINUX VALIDATION**
 
@@ -118,9 +114,9 @@ Phase 1 fixture remains the bitstream acceptance gate and is verified on `inst05
 
 ## Next step
 
-### Phase 2.14 live end-to-end validation
+### Phase 2.14 live Linux network validation
 
-Pull the runtime-interface change on `inst05`, run the runtime with a controlled UDP or RTP MPEG-TS source on input port `6000`, configure egress to `239.100.1.1:5000` with `OutputInterface=enp2s0`, and capture both paths. Verify input/output packet counts, 1316-byte aggregation, TS integrity, continuity counters, PCR behavior, pacing, and clean cancellation before marking Phase 2.14 VERIFIED.
+Pull the live-test command onto `inst05`, build it, run it with input on UDP port `6000` and output multicast `239.100.1.1:5000` through `enp2s0`, generate controlled MPEG-TS input, and capture both paths with `tcpdump`. Then verify TS packet integrity, continuity counters, PCR behavior, packet loss, aggregation and pacing. Record the results before proceeding to Phase 2.15 transport-density optimization.
 
 ## Planned phases
 
