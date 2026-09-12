@@ -1,57 +1,53 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 1 — Core MPEG-TS foundation / validation  
+**Status:** Phase 2 — IP transport foundation  
 **Updated:** 2026-09-12
 
-## Phase 1 progress
+## Phase 1 status
 
-### Completed
+The MPEG-TS foundation remains the correctness base: packet parsing, PAT/PMT sections, CRC, PSI packetization and PCR primitives are implemented. Deterministic fixture generation and GitHub Actions test execution are also wired in.
 
-- GitHub repository initialized.
-- MPEG-TS 188-byte packet primitive with sync/PID/PUSI/AFC/scrambling/CC parsing.
-- Payload offset handling including adaptation fields.
-- MPEG-2 section CRC-32 implementation.
-- PAT model with marshal/parse support, including program 0 / NIT PID.
-- PMT model with marshal/parse support and PID/section-size validation.
-- PSI section packetizer with PUSI/pointer-field and continuity-counter handling.
-- Per-PID continuity-counter tracker.
-- PCR encode/decode and extraction primitives.
-- Deterministic unit tests for PAT, PAT/NIT PID, PMT, PSI packetization and PCR round trips.
-- Deterministic MPEG-TS fixture generator under `cmd/tsfixture`.
-- GitHub Actions workflow running `go test ./...`.
-- Developer `Makefile` targets for tests and fixture generation.
+## Phase 2 progress
 
-### Source alignment
+### Implemented
 
-The project specification calls for a 500+ SPTS target and requires continuity-counter sanity checks, PCR handling and PSI/SI regeneration as core pipeline capabilities. fileciteturn3file0L22-L35
+- Raw UDP unicast ingest.
+- UDP multicast ingest with explicit interface selection.
+- Validation of UDP datagram sizes as integral 188-byte TS packets.
+- MPEG-TS datagram splitting without per-packet heap allocation in the parser.
+- RTP v2 parsing with CSRC, extension and padding handling.
+- RTP MPEG-TS payload validation.
+- RTP sequence-gap and duplicate detection primitive.
+- UDP unicast/multicast-capable egress through resolved UDP destinations.
+- Configurable TS packet aggregation for egress, including 7 × 188 = 1316-byte batches.
+- Bounded packet queue for ingest-to-processing back-pressure.
+- Target-bitrate pacing primitive.
+- Per-stream identity, protocol selection and atomic operational counters.
 
-The standards references reinforce this design: PAT maps services to PMT PIDs, PMT identifies service streams, and SI uses versioning and section mapping mechanisms. fileciteturn2file0L55-L78 fileciteturn3file2L164-L200
-
-## Files added/updated in this validation step
+### Transport API layout
 
 ```text
-cmd/tsfixture/main.go
-docs/PHASE1-VALIDATION.md
-.github/workflows/test.yml
-Makefile
-internal/mpegts/psi.go
-internal/mpegts/psi_test.go
+internal/transport/
+├── udp.go          # UDP/multicast ingest + TS datagram parsing
+├── udp_sink.go     # UDP egress and TS aggregation
+├── rtp.go          # RTP/TS parsing and sequence tracking
+├── pipeline.go     # queue, batching and bitrate pacing
+└── stream.go       # stream identity, queue and atomic statistics
 ```
 
 ## Verification status
 
-**Code-level tests:** automated in GitHub Actions; this chat session has not independently observed a workflow run result.  
-**TSDuck bitstream verification:** fixture and commands are ready; TSDuck execution is still pending.  
-**500+ SPTS performance:** not started; deliberately deferred until correctness foundations are validated.
+**Go tests:** added for UDP/TS parsing, RTP parsing, sequence tracking, batching and pacing. The latest GitHub Actions workflow must be observed before declaring the suite green.  
+**TSDuck:** Phase 1 fixture remains the bitstream acceptance gate.  
+**Live network test:** not yet run from this chat; requires the target Linux host/network interfaces and multicast sources.
 
 ## Next step
 
-Run the generated fixture through TSDuck and resolve any analyzer/table errors. After the bitstream passes, proceed to Phase 2 network ingest/egress with UDP/RTP multicast, CBR pacing, PCR restamping and continuity handling.
+Build the Phase 2 runtime worker that connects UDP/RTP ingest → bounded queue → transport processing → UDP egress, then add packet-level CC/PCR monitoring to that live path. After that, Phase 3 will own PSI/SI regeneration and scheduling.
 
 ## Planned phases
 
-- Phase 2 — IP multicast/RTP ingest and egress
 - Phase 3 — PSI/SI regeneration and scheduling
 - Phase 4 — DVB-SimulCrypt SCS/ECMG/EMMG protocol layer
 - Phase 5 — ECM/EMM integration
