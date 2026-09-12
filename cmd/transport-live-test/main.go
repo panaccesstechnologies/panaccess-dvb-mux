@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -30,15 +31,11 @@ func main() {
 	)
 	flag.Parse()
 
-	var ifaceName string
+	var iface *net.Interface
 	if *inputInterface != "" {
-		ifaceName = *inputInterface
-	}
-	var iface interfaceResolver
-	if ifaceName != "" {
-		netIface, err := lookupInterface(ifaceName)
+		netIface, err := net.InterfaceByName(*inputInterface)
 		if err != nil {
-			fatal(err)
+			fatal(fmt.Errorf("lookup input interface %q: %w", *inputInterface, err))
 		}
 		iface = netIface
 	}
@@ -78,14 +75,6 @@ func main() {
 		fatal(err)
 	}
 	fmt.Println("Phase 2.14 live transport test stopped cleanly")
-}
-
-// Keep the CLI independent of net.Interface in its flag parsing while passing
-// the concrete interface expected by the transport package.
-type interfaceResolver = transport.Interface
-
-func lookupInterface(name string) (interfaceResolver, error) {
-	return transport.LookupInterface(name)
 }
 
 func fatal(err error) {
