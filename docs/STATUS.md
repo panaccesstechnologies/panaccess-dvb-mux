@@ -8,6 +8,18 @@
 
 The MPEG-TS foundation remains the correctness base: packet parsing, PAT/PMT sections, CRC, PSI packetization and PCR primitives are implemented. Deterministic fixture generation and GitHub Actions test execution are also wired in.
 
+### Phase 1.7 TSDuck validation — VERIFIED
+
+Validated on `inst05` with TSDuck `3.37-3670`.
+
+Acceptance results:
+
+- `tsp -I file build/testdata/phase1.ts -P analyze -O drop` recognized a valid MPEG transport stream with zero invalid sync bytes and zero transport errors.
+- PAT on PID `0x0000` resolves program `100` to PMT PID `0x0100`.
+- PMT on PID `0x0100` resolves PCR/video PID `0x0101` and audio PID `0x0102`.
+- Video continuity/CC errors: 0; duplicated packets: 0; invalid PES starts: 0; PCR leaps: 0.
+- `tsp -P tables` successfully decoded both PAT and PMT sections.
+
 ## Phase 2 progress
 
 ### Implemented
@@ -28,30 +40,43 @@ The MPEG-TS foundation remains the correctness base: packet parsing, PAT/PMT sec
 - Live `Runtime` worker connecting UDP/RTP ingest → queue → processing passthrough → UDP egress.
 - Live TS monitoring for continuity-counter errors, PCR observations, malformed PCRs and backwards PCR movement.
 - Loopback runtime integration test covering UDP ingest and egress.
+- Phase 2.12 RTP sequence-tracker constructor fix.
 
-### Transport API layout
+## Phase 2 verification status
+
+### Phase 2.12 Integration / CI — VERIFIED
+
+The missing `NewRTPSequenceTracker()` constructor was added to `internal/transport/rtp.go` and committed as `d0fcec6a951b7d47c7bf868dd2d3a52ed35681f2`.
+
+Validated on `inst05` after `git pull --ff-only`:
 
 ```text
-internal/transport/
-├── udp.go           # UDP/multicast ingest + TS datagram parsing
-├── udp_sink.go      # UDP egress and TS aggregation
-├── rtp.go           # RTP/TS parsing and sequence tracking
-├── pipeline.go      # queue, batching and bitrate pacing
-├── monitor.go       # live CC/PCR telemetry
-├── stream.go        # stream identity, queue, RTP tracking and stats
-├── worker.go        # live ingest → queue → monitor → egress runtime
-└── worker_test.go   # UDP loopback runtime integration test
+go test ./...      PASS
+go test -race ./... PASS
+go build ./...     PASS
 ```
 
-## Verification status
+GitHub Actions **Go Test run #25** for commit `d0fcec6a951b7d47c7bf868dd2d3a52ed35681f2` completed successfully.
 
-**Go tests:** tests are present for UDP/TS parsing, RTP parsing, sequence tracking, batching, pacing, CC/PCR monitoring and the UDP loopback runtime. The latest GitHub Actions workflow must be observed before declaring the suite green.  
-**TSDuck:** Phase 1 fixture remains the bitstream acceptance gate.  
-**Live network test:** not yet run from this chat; the loopback integration test is the first automated live-path check, while multicast/multi-NIC validation still requires the target Linux host/network interfaces and sources.
+The local working tree is clean with respect to tracked repository files. `build/` is an untracked generated-output directory from the test fixture and is not treated as a source-code failure.
+
+**Phase 2.12 status: 🟢 VERIFIED**
+
+### TSDuck
+
+Phase 1 fixture remains the bitstream acceptance gate and is verified on `inst05`.
+
+### Live network test
+
+Not yet run beyond the local UDP loopback integration test. Multicast/multi-NIC validation still requires the target Linux host/network interfaces and sources.
 
 ## Next step
 
-Harden the Phase 2 runtime for production transport behavior: explicit egress-interface selection for multi-NIC deployments, packet-level CC/PCR policy and counters, improved pacing/buffer handling, and higher-density allocation paths. Then Phase 3 will own PSI/SI regeneration and scheduling.
+### Phase 2.13 — Explicit multi-NIC egress interface selection
+
+Add explicit outgoing-interface selection for UDP unicast/multicast egress so a multi-NIC deployment can deterministically bind transport output to the requested interface/address. Verify with Linux interface-level tests before moving to higher-density optimization.
+
+Then proceed through Phase 2.14 live Linux network validation and Phase 2.15 transport-density optimization before Phase 3 PSI/SI regeneration and scheduling.
 
 ## Planned phases
 
