@@ -23,7 +23,7 @@ func NewUDPSink(localAddr, remoteAddr string) (*UDPSink, error) {
 // NewUDPSinkWithInterface creates a sink whose output is explicitly associated
 // with the named network interface. For unicast, the interface's IPv4 address
 // is used as the local source address. For multicast, the implementation uses
-// the multicast socket's IP_MULTICAST_IF setting through ListenConfig control.
+// the multicast socket's IP_MULTICAST_IF setting through the socket control API.
 func NewUDPSinkWithInterface(localAddr, remoteAddr, interfaceName string) (*UDPSink, error) {
 	if interfaceName == "" {
 		return nil, fmt.Errorf("UDP egress interface name is required")
@@ -107,7 +107,10 @@ func setIPv4MulticastInterface(conn *net.UDPConn, iface *net.Interface) error {
 	if err != nil {
 		return err
 	}
-	pc := conn.SyscallConn()
+	pc, err := conn.SyscallConn()
+	if err != nil {
+		return fmt.Errorf("get UDP socket control: %w", err)
+	}
 	var controlErr error
 	if err := pc.Control(func(fd uintptr) {
 		controlErr = setIPv4MulticastInterfaceFD(int(fd), ip)
