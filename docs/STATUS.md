@@ -52,60 +52,70 @@ The missing `NewRTPSequenceTracker()` constructor was added to `internal/transpo
 Validated on `inst05` after `git pull --ff-only`:
 
 ```text
-go test ./...      PASS
+go test ./...       PASS
 go test -race ./... PASS
-go build ./...     PASS
+go build ./...      PASS
 ```
 
 GitHub Actions **Go Test run #25** for commit `d0fcec6a951b7d47c7bf868dd2d3a52ed35681f2` completed successfully.
 
-### Phase 2.13 Explicit multi-NIC egress interface selection — BLOCKED BY TARGET-HOST BUILD ERROR
+### Phase 2.13 Explicit multi-NIC egress interface selection — VERIFIED
 
-The Phase 2.13 implementation was pulled to `inst05`, and the host exposes multiple usable interfaces including:
+The implementation was corrected to handle the two-value `UDPConn.SyscallConn()` API and was committed as `86df1a028780f7b02ad727f871522720d87136db`.
 
-```text
-enp1s0  UP  192.168.1.35/24
-enp2s0  UP  192.168.10.25/24
-```
-
-The initial implementation used `UDPConn.SetMulticastInterface`, but `inst05`'s Go 1.24 environment reports that method as unavailable. That implementation was replaced with a Unix socket-level `IP_MULTICAST_IF` helper.
-
-The next target-host build uncovered a second compile error in `internal/transport/udp_sink.go`:
+Validated on `inst05`:
 
 ```text
-assignment mismatch: 1 variable but conn.SyscallConn returns 2 values
+enp2s0           UP             192.168.10.25/24
+go test ./...             PASS
+go test -race ./...       PASS
+go build ./...            PASS
 ```
 
-Therefore Phase 2.13 is **not verified** yet. The target host has not reached a passing `go test`, `go test -race`, or `go build` state for this phase.
+Live multicast egress was captured on `enp2s0` with:
 
-**Phase 2.13 status: 🔴 BUILD FIX REQUIRED — TARGET-HOST VERIFICATION PENDING**
+```text
+192.168.10.25.48663 > 239.100.1.1.5000: UDP, length 1316
+```
+
+The capture recorded **562 packets**, with **0 packets dropped by kernel**. This verifies actual multicast egress using the selected `enp2s0` interface and 7 × 188-byte TS aggregation.
+
+**Phase 2.13 status: 🟢 VERIFIED**
+
+## Phase 2.14 Live Linux network validation — IN PROGRESS
+
+Phase 2.14 validates the complete live transport path on Linux using real UDP/RTP traffic rather than only loopback/unit tests.
+
+Validation scope:
+
+- UDP MPEG-TS ingest on a Linux network interface.
+- RTP MPEG-TS ingest and sequence tracking.
+- Bounded queue behavior under sustained traffic.
+- Continuity-counter monitoring.
+- PCR observation and malformed/backwards-PCR detection.
+- UDP multicast egress through an explicitly selected interface.
+- 1316-byte (7 × 188-byte) TS aggregation.
+- CBR pacing behavior.
+- Runtime cancellation and clean socket shutdown.
+- Packet capture evidence for input and output traffic.
+
+Phase 2.13 already established real multicast egress on `enp2s0`; Phase 2.14 now extends that verification to the complete ingest → queue → monitor → egress runtime path with sustained Linux traffic.
+
+**Phase 2.14 status: 🟡 IN PROGRESS — LIVE LINUX VALIDATION**
 
 ## TSDuck
 
 Phase 1 fixture remains the bitstream acceptance gate and is verified on `inst05`.
 
-## Live network test
-
-The UDP loopback integration test is verified. Phase 2.13 explicit multi-NIC egress validation is blocked by the current `SyscallConn()` API usage and must be fixed before live interface testing.
-
 ## Next step
 
-### Phase 2.13 fix and verification on `inst05`
+### Phase 2.14 live Linux network validation
 
-Correct the `SyscallConn()` handling in `internal/transport/udp_sink.go`, pull the fix to `inst05`, and rerun:
-
-```text
-go test ./...
-go test -race ./...
-go build ./...
-```
-
-Then perform explicit egress testing on `enp2s0` (`192.168.10.25`) and mark Phase 2.13 verified only after the target-host tests pass.
-
-After Phase 2.13, proceed to Phase 2.14 live Linux network validation, then Phase 2.15 transport-density optimization before Phase 3 PSI/SI regeneration and scheduling.
+Run the runtime with real UDP/RTP input and multicast output on `inst05`, capture both paths with `tcpdump`, and verify TS packet integrity, continuity counters, PCR behavior, packet loss, aggregation and pacing. Record the results in `docs/STATUS.md` before proceeding to Phase 2.15 transport-density optimization.
 
 ## Planned phases
 
+- Phase 2.15 — High-density transport optimization
 - Phase 3 — PSI/SI regeneration and scheduling
 - Phase 4 — DVB-SimulCrypt SCS/ECMG/EMMG protocol layer
 - Phase 5 — ECM/EMM integration
