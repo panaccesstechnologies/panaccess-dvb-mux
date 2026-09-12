@@ -120,10 +120,9 @@ func (r *Runtime) Close() error {
 	return first
 }
 
-// Run starts the ingest goroutine and consumes queued TS packets in the
-// current goroutine. The queue is the explicit back-pressure boundary: if the
-// processing/egress side cannot keep up, ingest blocks rather than growing an
-// unbounded packet backlog.
+// Run starts ingest and consumes queued TS packets in the current goroutine.
+// The queue is the explicit back-pressure boundary: if processing/egress
+// cannot keep up, ingest blocks rather than growing an unbounded backlog.
 func (r *Runtime) Run(ctx context.Context) error {
 	if r == nil || r.Stream == nil || r.Source == nil || r.Sink == nil {
 		return fmt.Errorf("runtime is not initialized")
@@ -131,6 +130,7 @@ func (r *Runtime) Run(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	defer r.Close()
 
 	r.Stream.ResetPacing(time.Now())
 	ingestDone := make(chan error, 1)
@@ -140,35 +140,40 @@ func (r *Runtime) Run(ctx context.Context) error {
 
 	var cumulativeBytes int
 	for {
+		batch := make([]mpegts.Packet, 0, r.Config.BatchPackets)
 		select {
 		case <-ctx.Done():
-			_ = r.Source.Close()
-			<-ingestDone
 			return nil
 		case err := <-ingestDone:
 			if err != nil {
 				return err
 			}
-			// A successful ingest-loop return only occurs after source shutdown.
-			ingestDone = nil
-		}
-
-		batch := make([]mpegts.Packet, 0, r.Config.BatchPackets)
-		select {
-		case <-ctx.Done():
-			return nil
+			// The source has stopped. Drain anything already queued, then exit.
+			for len(batch) < r.Config.BatchPackets {
+				select {
+				case p := <-r.Stream.Queue.C:
+					batch = append(batch, p)
+				default:
+					if len(batch) == 0 {
+						return nil
+					}
+				}
+				if len(batch) == r.Config.BatchPackets {
+					break
+				}
+			}
 		case p := <-r.Stream.Queue.C:
 			batch = append(batch, p)
 		}
+
+		// Fill a short aggregation window without waiting for the next packet.
+		fill:
 		for len(batch) < r.Config.BatchPackets {
 			select {
 			case p := <-r.Stream.Queue.C:
 				batch = append(batch, p)
 			default:
-				break
-			}
-			if len(batch) >= r.Config.BatchPackets {
-				break
+				break fill
 			}
 		}
 
@@ -208,9 +213,12 @@ func (r *Runtime) ingestLoop(ctx context.Context) error {
 			r.Stream.Stats.AddPacketErrors(1)
 			continue
 		}
-		if err := r.Stream.EnqueueDatagram(datagram); err != nil {
-			// EnqueueDatagram already increments packet errors. Keep the source
-			// alive so one malformed datagram cannot terminate a live service.
+		if err := r.Stream.EnqueueDatagramContext(ctx, datagram); err != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
+			// EnqueueDatagramContext already increments packet errors. Keep the
+			// source alive so one malformed datagram cannot terminate a service.
 			continue
 		}
 	}
