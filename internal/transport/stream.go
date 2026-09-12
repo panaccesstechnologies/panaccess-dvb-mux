@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"context"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -80,9 +81,18 @@ func NewStream(id, source, protocol string, queueCapacity int, bitrate uint64) (
 }
 
 // EnqueueDatagram validates a raw UDP/RTP datagram and places its TS packets on
-// the bounded queue. It intentionally keeps transport parsing separate from
-// future service routing and scrambling.
+// the bounded queue using a background context.
 func (s *Stream) EnqueueDatagram(datagram []byte) error {
+	return s.EnqueueDatagramContext(context.Background(), datagram)
+}
+
+// EnqueueDatagramContext is the cancellation-aware ingest path used by the
+// runtime worker. Queue back-pressure therefore cannot prevent shutdown.
+func (s *Stream) EnqueueDatagramContext(ctx context.Context, datagram []byte) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	if s.Protocol == "udp" {
 		packets, err := ParseDatagram(datagram)
 		if err != nil {
@@ -90,7 +100,11 @@ func (s *Stream) EnqueueDatagram(datagram []byte) error {
 			return err
 		}
 		for _, p := range packets {
-			s.Queue.C <- p
+			select {
+			case s.Queue.C <- p:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}
 		s.Stats.AddDatagrams(1)
 		s.Stats.AddPackets(uint64(len(packets)))
@@ -120,7 +134,11 @@ func (s *Stream) EnqueueDatagram(datagram []byte) error {
 		return err
 	}
 	for _, p := range packets {
-		s.Queue.C <- p
+		select {
+		case s.Queue.C <- p:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 	s.Stats.AddDatagrams(1)
 	s.Stats.AddRTPPackets(1)
