@@ -145,28 +145,17 @@ func (r *Runtime) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case err := <-ingestDone:
+			if ctx.Err() != nil {
+				return nil
+			}
 			if err != nil {
 				return err
 			}
-			// The source has stopped. Drain anything already queued, then exit.
-			for len(batch) < r.Config.BatchPackets {
-				select {
-				case p := <-r.Stream.Queue.C:
-					batch = append(batch, p)
-				default:
-					if len(batch) == 0 {
-						return nil
-					}
-				}
-				if len(batch) == r.Config.BatchPackets {
-					break
-				}
-			}
+			return nil
 		case p := <-r.Stream.Queue.C:
 			batch = append(batch, p)
 		}
 
-		// Fill a short aggregation window without waiting for the next packet.
 		fill:
 		for len(batch) < r.Config.BatchPackets {
 			select {
@@ -200,14 +189,14 @@ func (r *Runtime) ingestLoop(ctx context.Context) error {
 			if ne, ok := err.(net.Error); ok && ne.Timeout() {
 				select {
 				case <-ctx.Done():
-					return nil
+					return context.Canceled
 				default:
 					continue
 				}
 			}
 			select {
 			case <-ctx.Done():
-				return nil
+				return context.Canceled
 			default:
 			}
 			r.Stream.Stats.AddPacketErrors(1)
@@ -215,7 +204,7 @@ func (r *Runtime) ingestLoop(ctx context.Context) error {
 		}
 		if err := r.Stream.EnqueueDatagramContext(ctx, datagram); err != nil {
 			if ctx.Err() != nil {
-				return nil
+				return context.Canceled
 			}
 			// EnqueueDatagramContext already increments packet errors. Keep the
 			// source alive so one malformed datagram cannot terminate a service.
