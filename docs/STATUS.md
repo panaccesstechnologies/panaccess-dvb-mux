@@ -1,37 +1,50 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 0 — repository and reference baseline initialized  
+**Status:** Phase 1 — Core MPEG-TS foundation  
 **Updated:** 2026-09-12
 
-## Completed
+## Phase 1 progress
+
+### Completed
 
 - GitHub repository initialized.
-- Project target recorded: 500+ concurrent SPTS DVB IP multiplexing and scrambling.
-- Initial reference set reviewed:
-  - TSDuck User Guide — operational/diagnostic reference.
-  - ETSI EN 300 468 V1.18.1 (2023-12) — DVB Service Information (SI).
-  - ETSI TS 102 470-2 V1.2.1 (2011-09) — IP Datacast PSI/SI for DVB-SH.
-- Initial repository documentation added.
+- MPEG-TS 188-byte packet primitive with sync/PID/PUSI/AFC/scrambling/CC parsing.
+- Payload offset handling including adaptation fields.
+- MPEG-2 section CRC-32 implementation.
+- PAT model with marshal/parse support.
+- PMT model with marshal/parse support.
+- PSI section packetizer with PUSI/pointer-field and continuity-counter handling.
+- Per-PID continuity-counter tracker.
+- PCR encode/decode and extraction primitives.
+- Deterministic unit tests for PAT, PMT, PSI packetization and PCR round trips.
 
-## Reference-driven observations
+### Source alignment
 
-ETSI EN 300 468 describes SI used to help receivers select services/events and configure themselves. Its table coverage includes NIT, BAT, SDT, EIT, TDT, TOT, RST and related tables/descriptors.
+The project specification calls for a 500+ SPTS target and requires continuity-counter sanity checks, PCR handling and PSI/SI regeneration as core pipeline capabilities. fileciteturn3file0L22-L35
 
-The ETSI TS 102 470-2 reference specifically documents PSI/SI usage in DVB-SH systems, including PAT, PMT, CAT, TSDT, NIT and SDT requirements.
+The standards references reinforce this design: PAT maps services to PMT PIDs, PMT identifies service streams, and SI uses versioning and section mapping mechanisms. fileciteturn2file0L55-L78 fileciteturn3file2L164-L200
 
-For the multiplexer, this means PSI/SI generation and regeneration will be treated as a first-class pipeline component rather than an afterthought.
+## Files added in Phase 1
 
-## Next implementation phase
+```text
+internal/mpegts/
+├── packet.go
+├── crc.go
+├── psi.go
+├── clock.go
+└── psi_test.go
+```
 
-**Phase 1 — Core MPEG-TS model and pipeline skeleton**
+## Verification status
 
-1. Define transport-stream packet primitives and validation.
-2. Define service/program/PID configuration models.
-3. Implement PAT/PMT parsing and generation foundations.
-4. Add continuity-counter and PCR tracking primitives.
-5. Add deterministic test vectors and TSDuck-based diagnostics.
-6. Establish the architecture needed to scale from a small test configuration to 500+ SPTS services.
+**Code-level tests:** added, but CI execution has not yet been wired into GitHub Actions.  
+**TSDuck bitstream verification:** pending the first generated TS test fixture.  
+**500+ SPTS performance:** not started; deliberately deferred until correctness foundations are validated.
+
+## Next step
+
+Create a small deterministic TS fixture containing PAT + PMT + elementary-stream packets, run it through TSDuck analysis, and use the result to harden the packet/PSI layer before starting Phase 2 network ingest/egress.
 
 ## Planned phases
 
@@ -44,7 +57,3 @@ For the multiplexer, this means PSI/SI generation and regeneration will be treat
 - Phase 8 — Web API and real-time Web GUI
 - Phase 9 — Docker deployment, observability and operational tooling
 - Phase 10 — interoperability, fault-injection and acceptance testing
-
-## Important development rule
-
-Do not mark a subsystem complete only because it compiles. Each major subsystem must have protocol/bitstream tests and TSDuck diagnostics before being considered production-ready.
