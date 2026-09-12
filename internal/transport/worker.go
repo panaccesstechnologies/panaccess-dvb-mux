@@ -24,6 +24,7 @@ type RuntimeConfig struct {
 
 	OutputLocalAddr string
 	OutputAddr      string
+	OutputInterface string
 
 	QueueCapacity int
 	BatchPackets  int
@@ -97,7 +98,13 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	sink, err := NewUDPSink(config.OutputLocalAddr, config.OutputAddr)
+
+	var sink *UDPSink
+	if config.OutputInterface != "" {
+		sink, err = NewUDPSinkWithInterface(config.OutputLocalAddr, config.OutputAddr, config.OutputInterface)
+	} else {
+		sink, err = NewUDPSink(config.OutputLocalAddr, config.OutputAddr)
+	}
 	if err != nil {
 		_ = source.Close()
 		return nil, err
