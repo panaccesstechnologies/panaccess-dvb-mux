@@ -41,6 +41,7 @@ Acceptance results:
 - Live TS monitoring for continuity-counter errors, PCR observations, malformed PCRs and backwards PCR movement.
 - Loopback runtime integration test covering UDP ingest and egress.
 - Phase 2.12 RTP sequence-tracker constructor fix.
+- Phase 2.13 explicit UDP egress interface selection for unicast and multicast.
 
 ## Phase 2 verification status
 
@@ -58,25 +59,37 @@ go build ./...     PASS
 
 GitHub Actions **Go Test run #25** for commit `d0fcec6a951b7d47c7bf868dd2d3a52ed35681f2` completed successfully.
 
-The local working tree is clean with respect to tracked repository files. `build/` is an untracked generated-output directory from the test fixture and is not treated as a source-code failure.
+### Phase 2.13 Explicit multi-NIC egress interface selection — IMPLEMENTED
 
-**Phase 2.12 status: 🟢 VERIFIED**
+Implemented in `internal/transport/udp_sink.go`:
 
-### TSDuck
+- Preserved the existing `NewUDPSink(localAddr, remoteAddr)` API.
+- Added `NewUDPSinkWithInterface(localAddr, remoteAddr, interfaceName)`.
+- Validates the requested interface exists and is UP.
+- Resolves an IPv4 address from the selected interface when no explicit local address is supplied.
+- Uses that address as the UDP source address for deterministic unicast routing.
+- Applies `SetMulticastInterface` for multicast destinations.
+- Added unit coverage for invalid interface handling and loopback interface creation.
+
+The implementation is designed to remain portable for the current Go CI while providing deterministic interface/address selection on Linux deployments.
+
+**Phase 2.13 status: 🟡 IMPLEMENTED — TARGET-HOST VERIFICATION PENDING**
+
+## TSDuck
 
 Phase 1 fixture remains the bitstream acceptance gate and is verified on `inst05`.
 
-### Live network test
+## Live network test
 
-Not yet run beyond the local UDP loopback integration test. Multicast/multi-NIC validation still requires the target Linux host/network interfaces and sources.
+The UDP loopback integration test is verified. Phase 2.13 now requires explicit Linux multi-NIC/interface validation on the target host before being marked green.
 
 ## Next step
 
-### Phase 2.13 — Explicit multi-NIC egress interface selection
+### Phase 2.13 verification on `inst05`
 
-Add explicit outgoing-interface selection for UDP unicast/multicast egress so a multi-NIC deployment can deterministically bind transport output to the requested interface/address. Verify with Linux interface-level tests before moving to higher-density optimization.
+Pull the latest commit, run the complete Go test/race/build suite, inspect available interfaces, and verify an explicit-interface UDP egress path. Then mark Phase 2.13 verified and proceed to Phase 2.14 live Linux network validation.
 
-Then proceed through Phase 2.14 live Linux network validation and Phase 2.15 transport-density optimization before Phase 3 PSI/SI regeneration and scheduling.
+After Phase 2.14, proceed to Phase 2.15 transport-density optimization before Phase 3 PSI/SI regeneration and scheduling.
 
 ## Planned phases
 
