@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"net"
+	"strconv"
 	"testing"
 	"time"
 
@@ -34,7 +35,7 @@ func TestRuntimeUDPIngestToEgress(t *testing.T) {
 		Protocol:      "udp",
 		BindAddr:      "127.0.0.1",
 		Port:          sourcePort,
-		OutputAddr:    net.JoinHostPort("127.0.0.1", formatPort(sinkPort)),
+		OutputAddr:    net.JoinHostPort("127.0.0.1", strconv.Itoa(sinkPort)),
 		QueueCapacity: 16,
 		BatchPackets:  7,
 		Bitrate:       8_000_000,
@@ -100,22 +101,4 @@ func TestRuntimeUDPIngestToEgress(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatal("runtime did not stop after cancellation")
 	}
-}
-
-func formatPort(port int) string {
-	return net.JoinHostPort("127.0.0.1", "")[:0] + itoa(port)
-}
-
-func itoa(port int) string {
-	if port == 0 {
-		return "0"
-	}
-	var b [6]byte
-	i := len(b)
-	for port > 0 {
-		i--
-		b[i] = byte('0' + port%10)
-		port /= 10
-	}
-	return string(b[i:])
 }
