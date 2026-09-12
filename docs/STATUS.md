@@ -42,6 +42,7 @@ Acceptance results:
 - Loopback runtime integration test covering UDP ingest and egress.
 - Phase 2.12 RTP sequence-tracker constructor fix.
 - Phase 2.13 explicit UDP egress interface selection for unicast and multicast.
+- Phase 2.14 runtime configuration now exposes `OutputInterface` and selects `NewUDPSinkWithInterface()` when configured, allowing the complete runtime path to explicitly bind egress to a selected Linux NIC.
 
 ## Phase 2 verification status
 
@@ -99,7 +100,15 @@ Validation scope:
 - Runtime cancellation and clean socket shutdown.
 - Packet capture evidence for input and output traffic.
 
-Phase 2.13 already established real multicast egress on `enp2s0`; Phase 2.14 now extends that verification to the complete ingest → queue → monitor → egress runtime path with sustained Linux traffic.
+### Phase 2.14 implementation step — runtime egress interface selection
+
+`internal/transport/worker.go` now has an `OutputInterface` configuration field. `NewRuntime()` uses `NewUDPSinkWithInterface()` when this field is non-empty, while preserving the existing default behavior when it is empty.
+
+Implementation commit:
+
+`9d1c398f557e80ec9654f43f98dbb53caa87480e`
+
+The earlier live capture on `inst05` demonstrated the selected-interface egress path, but the capture contained **2172 output packets on UDP port 5000 and 0 packets on UDP port 6000**. Therefore it did not yet prove the complete ingest → queue → monitor → egress runtime path.
 
 **Phase 2.14 status: 🟡 IN PROGRESS — LIVE LINUX VALIDATION**
 
@@ -109,9 +118,9 @@ Phase 1 fixture remains the bitstream acceptance gate and is verified on `inst05
 
 ## Next step
 
-### Phase 2.14 live Linux network validation
+### Phase 2.14 live end-to-end validation
 
-Run the runtime with real UDP/RTP input and multicast output on `inst05`, capture both paths with `tcpdump`, and verify TS packet integrity, continuity counters, PCR behavior, packet loss, aggregation and pacing. Record the results in `docs/STATUS.md` before proceeding to Phase 2.15 transport-density optimization.
+Pull the runtime-interface change on `inst05`, run the runtime with a controlled UDP or RTP MPEG-TS source on input port `6000`, configure egress to `239.100.1.1:5000` with `OutputInterface=enp2s0`, and capture both paths. Verify input/output packet counts, 1316-byte aggregation, TS integrity, continuity counters, PCR behavior, pacing, and clean cancellation before marking Phase 2.14 VERIFIED.
 
 ## Planned phases
 
