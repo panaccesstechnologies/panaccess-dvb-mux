@@ -65,6 +65,18 @@ func TestRTPSequenceTracker(t *testing.T) {
 	}
 }
 
+func TestUDPEgressInterfaceValidation(t *testing.T) {
+	if _, err := NewUDPSinkWithInterface("", "127.0.0.1:9999", "__does_not_exist__"); err == nil {
+		t.Fatal("expected invalid interface error")
+	}
+}
+
+func TestUDPEgressInterfaceLoopback(t *testing.T) {
+	if _, err := NewUDPSinkWithInterface("", "127.0.0.1:9999", "lo"); err != nil {
+		t.Skipf("loopback interface unavailable: %v", err)
+	}
+}
+
 func TestBatch(t *testing.T) {
 	packets := make([]mpegts.Packet, 8)
 	for i := range packets {
