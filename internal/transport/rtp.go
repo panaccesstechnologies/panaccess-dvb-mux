@@ -6,7 +6,7 @@ import (
 )
 
 // RTPPacket is the parsed RTP header plus its payload. Only the header fields
-// needed by MPEG-TS over RTP are retained.
+// needed for MPEG-TS over RTP are retained.
 type RTPPacket struct {
 	Version        uint8
 	Padding        bool
@@ -77,6 +77,11 @@ func ValidateMPEGTSRTP(p RTPPacket) error {
 type RTPSequenceTracker struct {
 	last  uint16
 	valid bool
+}
+
+// NewRTPSequenceTracker creates a tracker with no prior sequence state.
+func NewRTPSequenceTracker() *RTPSequenceTracker {
+	return &RTPSequenceTracker{}
 }
 
 func (t *RTPSequenceTracker) Observe(seq uint16) (gap uint16, duplicate bool) {
