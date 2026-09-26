@@ -2,7 +2,7 @@
 
 **Project:** panaccess-dvb-mux  
 **Status:** Phase 2 — IP transport foundation  
-**Updated:** 2026-09-13
+**Updated:** 2026-09-26
 
 ## Phase 1 status
 
@@ -106,17 +106,21 @@ This verifies the live Linux multicast egress path at the MPEG-TS content level,
 
 Phase 1 fixture remains the bitstream acceptance gate and is verified on `inst05`. The Phase 2.14 live multicast capture has now also been validated directly with TSDuck's `pcap` input plugin and `analyze` processor.
 
-## Next step
+## Current phase
 
-### Phase 2.15 — High-density transport optimization
+### Phase 2.15 — High-density transport optimization — BASELINE DEFINED
 
-Proceed to transport-density work after preserving the Phase 2.14 evidence. The next validation focus should be sustained multi-service throughput, queue/back-pressure behavior, pacing accuracy, packet-loss/continuity monitoring under load, and scaling toward the planned 500+ service target.
+Phase 2.15 has started with a reproducible performance-baseline plan in `docs/PHASE2.15-PERFORMANCE.md`. The first measurement levels are 1, 10, 50 and 100 concurrent SPTS. Each level must record throughput, packet/CC/PCR errors, queue/back-pressure behavior, CPU, memory and clean shutdown before being marked verified.
+
+The implementation has not yet been performance-optimized or validated at those density levels. Do not mark Phase 2.15 VERIFIED until measurements are executed on the target Linux host.
+
+The current runtime uses a bounded Go channel as the back-pressure boundary and creates a batch slice in the run loop; these are candidates for optimization after the baseline is captured.
 
 **Specification compliance note:** the current implementation remains Go-based; the broader project requirement previously identified Rust or C++20 as the implementation target. This remains a separate compliance gap and should not be conflated with the successful Phase 2.14 functional validation.
 
 ## Planned phases
 
-- Phase 2.15 — High-density transport optimization
+- Phase 2.15 — High-density transport optimization (baseline plan defined)
 - Phase 3 — PSI/SI regeneration and scheduling
 - Phase 4 — DVB-SimulCrypt SCS/ECMG/EMMG protocol layer
 - Phase 5 — ECM/EMM integration
