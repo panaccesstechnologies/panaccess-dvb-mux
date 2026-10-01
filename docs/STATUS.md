@@ -416,3 +416,5 @@ A Go array-to-slice compile issue in the CSA2 block chaining code was corrected 
 - CSA2 KAT direction corrected: the published `2d0a...` vector is validated as `Encrypt(00..b7) == 2d0a...`, followed by `Decrypt(ciphertext) == plaintext`. Earlier attempts incorrectly asserted `Decrypt(plaintext) == ciphertext`, which produces the observed `425670...` block-decrypt result. Phase 6.1 remains pending inst05 verification.
 
 - CSA2 direction diagnosis: pinned libdvbcsa `testdec.c` uses `dvbcsa_decrypt()` to transform the ascending plaintext vector into the published `2d0a...` scrambled vector; `testenc.c` reverses it with `dvbcsa_encrypt()`. Our `Encrypt`/`Decrypt` API is therefore aligned to those operational directions. Awaiting inst05 KAT verification.
+
+- CSA2 KAT corrected to the pinned libdvbcsa test semantics: `Decrypt(in) == out` and `Encrypt(out) == in`. The prior `Encrypt(in) == out` assertion was directionally inconsistent with upstream `testenc.c`/`testdec.c`. Implementation API is now source-faithful to `dvbcsa_algo.c`. Awaiting inst05 verification.
