@@ -114,11 +114,9 @@ func Encrypt(data []byte, cw [8]byte) error {
  // The first encrypted block is the stream-cipher IV. The stream stage
  // processes everything after that block, including any residue bytes.
  if len(data)>8 {
-  var st streamState
   var iv [8]byte
   copy(iv[:],data[:8])
-  st.init(cw,iv)
-  st.xor(data[8:])
+  refStreamXOR(cw,iv,data[8:])
  }
  return nil
 }
