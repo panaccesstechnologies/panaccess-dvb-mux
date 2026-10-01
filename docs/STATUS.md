@@ -203,12 +203,41 @@ go build ./...
 
 After those pass, Phase 4.2 will be marked verified on `inst05`. The next development step will be controlled ECMG `CW_provision` / `ECM_response` handling.
 
+### Phase 4.3 — ECMG CW_provision / ECM_response — READY FOR inst05 VERIFICATION
+
+Implemented:
+
+- `CW_provision` request construction.
+- `ECM_channel_id`, `ECM_stream_id`, and `CP_number` signalling.
+- Repeated `CP_CW_combination` encoding as Crypto-period number + control word.
+- Optional `CP_duration` and `access_criteria`.
+- `ECM_response` parsing and identity validation.
+- ECM datagram extraction.
+- Local mock-ECMG integration coverage for a complete CW provision → ECM response transaction.
+- 8-byte control-word test vector for the planned DVB-CSA2 integration.
+
+ETSI TS 103 197 defines `CW_provision` as the SCS request to compute an ECM, with `CP_CW_combination` carrying the crypto-period number and control word; `ECM_response` returns the ECM datagram. The specification also notes that `CP_CW_combination` is typically 10 bytes: 2 bytes CP number plus the control word. citeturn1search1turn0search12
+
+This phase still does **not** generate an ECM locally and does **not** perform DVB-CSA2 scrambling. The mock server only returns deterministic test ECM bytes.
+
+**Verification on inst05:**
+
+```bash
+cd ~/panaccess-dvb-mux
+git pull --ff-only
+go test ./...
+go test -race ./...
+go build ./...
+```
+
+After these pass, Phase 4.3 will be marked verified and the next step will connect the returned ECM datagram to the service's ECM PID signalling path.
+
 ## Planned phases
 
 - Phase 3.1 — PSI/CA service discovery model
 - Phase 4.1 — DVB-SimulCrypt ECMG protocol foundation
 - Phase 4.2 — DVB-SimulCrypt ECMG TCP session/client and channel/stream lifecycle
-- Phase 4.3 — DVB-SimulCrypt EMMG/MUX protocol foundation
+- Phase 4.4 — DVB-SimulCrypt EMMG/MUX protocol foundation
 - Phase 5 — ECM/EMM integration into the 5-stream service pipeline
 - Phase 6 — DVB-CSA2 scrambling engine integration
 - Phase 7 — 500+ service concurrency, NUMA/threading and performance tuning
