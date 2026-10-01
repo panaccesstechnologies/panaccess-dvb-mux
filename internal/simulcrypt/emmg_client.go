@@ -40,9 +40,9 @@ func (c *EMMGClient) Connect() error {
 	return nil
 }
 
-func emmgParamValue(msg Message, typ uint16) []byte {
+func emmgParamValue(msg Message, typ uint16) Parameter {
 	p, ok := msg.First(typ)
-	if !ok { return nil }
+	if !ok { return Parameter{Type: typ} }
 	return p
 }
 
