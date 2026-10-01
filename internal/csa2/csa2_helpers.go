@@ -66,22 +66,18 @@ func blockEncrypt(kk *[56]byte, in [8]byte) [8]byte {
 }
 
 func blockDecrypt(kk *[56]byte, in [8]byte) [8]byte {
- var r [9]byte
- copy(r[1:],in[:])
- for i:=55;i>=0;i-- {
-  s:=blockSBox[kk[i]^r[7]]
-  p:=blockPerm[s]
-  next:=r[7]
-  r[7]=r[6]^p
-  r[6]=r[5]
-  r[5]=r[4]^r[8]^s
-  r[4]=r[3]^r[8]^s
-  r[3]=r[2]^r[8]^s
-  r[2]=r[1]
-  r[1]=r[8]^s
-  r[8]=next
+ w := in
+ for i := 55; i >= 0; i-- {
+  ss := blockSBox[kk[i]^w[6]]
+  l := w[7] ^ ss
+  w[7] = w[6]
+  w[6] = w[5] ^ blockPerm[ss]
+  w[5] = w[4]
+  w[4] = w[3] ^ l
+  w[3] = w[2] ^ l
+  w[2] = w[1] ^ l
+  w[1] = w[0]
+  w[0] = l
  }
- var out [8]byte
- copy(out[:],r[1:])
- return out
+ return w
 }
