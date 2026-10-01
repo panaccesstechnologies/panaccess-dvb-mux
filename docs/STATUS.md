@@ -412,3 +412,5 @@ A Go array-to-slice compile issue in the CSA2 block chaining code was corrected 
 - CSA2 KAT investigation: upstream `testdec.c` defines the test vector direction as `decrypt(ascending plaintext) -> 2d0a...` and `testenc.c` verifies the inverse. The local KAT direction was reversed. Upstream key-permutation basis extraction also confirms the original row-7 masks (`0x200000000000000`, `0x1000000`); the experimental replacement was reverted. Phase 6.1 remains pending inst05 verification.
 
 - CSA2 KAT follow-up: decrypt path was using the alternate `streamState` implementation while encrypt already used the pinned libdvbcsa reference stream implementation. Decrypt is now switched to the same reference stream path. Phase 6.1 remains pending inst05 verification.
+
+- CSA2 KAT direction corrected: the published `2d0a...` vector is validated as `Encrypt(00..b7) == 2d0a...`, followed by `Decrypt(ciphertext) == plaintext`. Earlier attempts incorrectly asserted `Decrypt(plaintext) == ciphertext`, which produces the observed `425670...` block-decrypt result. Phase 6.1 remains pending inst05 verification.
