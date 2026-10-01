@@ -1,7 +1,7 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 4.4 — EMMG/MUX TCP foundation — VERIFIED ON inst05  
+**Status:** Phase 5.1 — ECM PID packetization/injection foundation — VERIFIED ON inst05  
 **Updated:** 2026-10-01
 
 ## Phase 1 status
