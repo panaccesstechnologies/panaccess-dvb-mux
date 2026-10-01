@@ -1,7 +1,7 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 5.2 — ECMG response → ECM PID integration — VERIFIED ON inst05  
+**Status:** Phase 5.3 — ECMG transaction → ECM PID end-to-end integration — VERIFIED ON inst05  
 **Updated:** 2026-10-01
 
 ## Phase 1 status
@@ -288,6 +288,29 @@ go build ./...      PASS
 ```
 
 Phase 5.2 is verified. This still does not scramble payload packets.
+
+### Phase 5.3 — ECMG transaction → ECM PID end-to-end integration — VERIFIED ON inst05
+
+Added an end-to-end integration test covering the existing ECMG client and ECM PID insertion path:
+
+- TCP ECMG channel setup.
+- ECMG stream setup.
+- CW provision transaction.
+- ECMG ECM response.
+- Conversion to `ECMResponse`.
+- Service ECM endpoint selection.
+- MPEG-TS ECM section packetization onto PID `0x1FFE`.
+- Verification of PUSI, pointer field, continuity counter, PID and returned ECM payload.
+
+Verification on `inst05`:
+
+```text
+go test ./...       PASS
+go test -race ./... PASS
+go build ./...      PASS
+```
+
+Phase 5.3 is verified. This is still a protocol/integration test using a mock ECMG; production ECMG interoperability and actual DVB-CSA2 scrambling remain to be implemented and validated.
 
 ## Planned phases
 
