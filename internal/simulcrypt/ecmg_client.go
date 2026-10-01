@@ -237,3 +237,74 @@ func requireUint16(m Message, typ uint16) (uint16, error) {
 	}
 	return Uint16Value(Parameter{Type: typ, Value: raw})
 }
+
+
+type CPControlWord struct {
+	CP uint16
+	CW []byte
+}
+
+type ECMResponse struct {
+	ChannelID uint16
+	StreamID  uint16
+	CPNumber  uint16
+	ECMDatagram []byte
+	Message Message
+}
+
+func (c *ECMGClient) ProvisionCW(cpNumber uint16, combinations []CPControlWord, cpDuration *uint16, accessCriteria []byte) (ECMResponse, error) {
+	if c.conn == nil {
+		return ECMResponse{}, fmt.Errorf("ECMG client not connected")
+	}
+	if len(combinations) == 0 {
+		return ECMResponse{}, fmt.Errorf("at least one CP/CW combination is required")
+	}
+	params := []Parameter{
+		Uint16Parameter(ParamECMChannelID, c.cfg.ECMChannelID),
+		Uint16Parameter(ParamECMStreamID, c.cfg.ECMStreamID),
+		Uint16Parameter(ParamCPNumber, cpNumber),
+	}
+	for _, combination := range combinations {
+		if len(combination.CW) == 0 {
+			return ECMResponse{}, fmt.Errorf("CP %d has empty control word", combination.CP)
+		}
+		value := make([]byte, 2+len(combination.CW))
+		value[0] = byte(combination.CP >> 8)
+		value[1] = byte(combination.CP)
+		copy(value[2:], combination.CW)
+		params = append(params, BytesParameter(ParamCPCWCombination, value))
+	}
+	if cpDuration != nil {
+		params = append(params, Uint16Parameter(ParamCPDuration, *cpDuration))
+	}
+	if len(accessCriteria) > 0 {
+		params = append(params, BytesParameter(ParamAccessCriteria, accessCriteria))
+	}
+	resp, err := c.exchangeMessage(NewMessage(MsgCWProvision, params...), MsgECMResponse, MsgStreamError)
+	if err != nil {
+		return ECMResponse{}, fmt.Errorf("ECMG CW provision: %w", err)
+	}
+	channelID, err := requireUint16(resp, ParamECMChannelID)
+	if err != nil {
+		return ECMResponse{}, err
+	}
+	streamID, err := requireUint16(resp, ParamECMStreamID)
+	if err != nil {
+		return ECMResponse{}, err
+	}
+	responseCP, err := requireUint16(resp, ParamCPNumber)
+	if err != nil {
+		return ECMResponse{}, err
+	}
+	datagram, ok := resp.First(ParamECMDatagram)
+	if !ok {
+		return ECMResponse{}, fmt.Errorf("ECMG response missing ECM_datagram")
+	}
+	return ECMResponse{
+		ChannelID: channelID,
+		StreamID: streamID,
+		CPNumber: responseCP,
+		ECMDatagram: datagram,
+		Message: resp,
+	}, nil
+}
