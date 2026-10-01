@@ -65,7 +65,7 @@ func TestEMMGToTSIntegration(t *testing.T) {
 			done <- fmt.Errorf("want data_provision, got 0x%04x", m.Type); return
 		}
 		p, ok := m.First(simulcrypt.EMMGParamDatagram)
-		if !ok || string(p.Value) != string(emmSection) {
+		if !ok || string(p) != string(emmSection) {
 			done <- fmt.Errorf("EMM datagram mismatch"); return
 		}
 		done <- nil
