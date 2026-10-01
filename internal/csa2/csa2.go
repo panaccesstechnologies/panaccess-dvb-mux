@@ -102,18 +102,42 @@ func Encrypt(data []byte, cw [8]byte) error {
  kk:=computeKey(cw)
  alen:=len(data)&^7
 
- // Match the scrambling direction used by the published libdvbcsa
- // vector: this is the block-decrypt pipeline followed by the stream
- // stage (libdvbcsa_decrypt).
+ // Source-faithful libdvbcsa_encrypt(): block stage runs backwards
+ // from the final aligned block, followed by the stream stage.
+ var b [8]byte
+ last:=alen-8
+ copy(b[:],data[last:last+8])
+ b=blockEncrypt(&kk,b)
+ copy(data[last:last+8],b[:])
+
+ for i:=last-8;i>=0;i-=8 {
+  for j:=0;j<8;j++ { b[j]=data[i+j]^data[i+8+j] }
+  b=blockEncrypt(&kk,b)
+  copy(data[i:i+8],b[:])
+ }
+
+ if len(data)>8 {
+  var iv [8]byte
+  copy(iv[:],data[:8])
+  refStreamXOR(streamCW(cw),iv,data[8:])
+ }
+ return nil
+}
+
+func Decrypt(data []byte, cw [8]byte) error {
+ if len(data)<8 { return fmt.Errorf("CSA2 payload must be at least 8 bytes") }
+
+ kk:=computeKey(cw)
+ alen:=len(data)&^7
+
+ // Source-faithful libdvbcsa_decrypt(): stream stage first, followed
+ // by forward block decryption with CBC-style chaining.
  if len(data)>8 {
   var iv [8]byte
   copy(iv[:],data[:8])
   refStreamXOR(streamCW(cw),iv,data[8:])
  }
 
- // Reverse the CBC-style block chain. The first block is decrypted
- // directly; every following block is XORed with the preceding
- // decrypted block before block decryption.
  var b [8]byte
  copy(b[:],data[:8])
  b=blockDecrypt(&kk,b)
@@ -127,30 +151,3 @@ func Encrypt(data []byte, cw [8]byte) error {
  return nil
 }
 
-func Decrypt(data []byte, cw [8]byte) error {
- if len(data)<8 { return fmt.Errorf("CSA2 payload must be at least 8 bytes") }
-
- kk:=computeKey(cw)
- alen:=len(data)&^7
-
- // Inverse of Encrypt: remove the stream layer first, then match the
- // published libdvbcsa_encrypt() block pipeline.
- if len(data)>8 {
-  var iv [8]byte
-  copy(iv[:],data[:8])
-  refStreamXOR(streamCW(cw),iv,data[8:])
- }
-
- var b [8]byte
- last:=alen-8
- copy(b[:],data[last:last+8])
- b=blockEncrypt(&kk,b)
- copy(data[last:last+8],b[:])
-
- for i:=last-8;i>=0;i-=8 {
-  for j:=0;j<8;j++ { b[j]=data[i+j]^data[i+8+j] }
-  b=blockEncrypt(&kk,b)
-  copy(data[i:i+8],b[:])
- }
- return nil
-}
