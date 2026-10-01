@@ -29,8 +29,8 @@ func TestECMResponseIntegration(t *testing.T) {
 	if got := uint16(p.Data[1]&0x1f)<<8 | uint16(p.Data[2]); got != 0x1ffe { t.Fatalf("PID 0x%04x, want 0x1ffe", got) }
 	if p.Data[1]&0x40 == 0 { t.Fatal("missing PUSI") }
 	if p.Data[3]&0x0f != 4 { t.Fatalf("CC=%d, want 4", p.Data[3]&0x0f) }
-	if p.Data[5] != 0 { t.Fatalf("pointer=%d, want 0", p.Data[5]) }
-	if got := p.Data[6:14]; string(got) != string(resp.ECMDatagram) { t.Fatalf("ECM payload mismatch: %x", got) }
+	if p.Data[4] != 0 { t.Fatalf("pointer=%d, want 0", p.Data[4]) }
+	if got := p.Data[5:13]; string(got) != string(resp.ECMDatagram) { t.Fatalf("ECM payload mismatch: %x", got) }
 
 	// Ensure this path is only control-plane injection; the source packet is not scrambled.
 	if p.Data[3]&0xc0 != 0 { t.Fatal("ECM packet unexpectedly scrambled") }
