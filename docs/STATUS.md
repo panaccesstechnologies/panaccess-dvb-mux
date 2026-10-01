@@ -1,7 +1,7 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 5.3 — ECMG transaction → ECM PID end-to-end integration — VERIFIED ON inst05  
+**Status:** Phase 5.4 — EMM PID insertion foundation — VERIFIED ON inst05  
 **Updated:** 2026-10-01
 
 ## Phase 1 status
@@ -311,6 +311,26 @@ go build ./...      PASS
 ```
 
 Phase 5.3 is verified. This is still a protocol/integration test using a mock ECMG; production ECMG interoperability and actual DVB-CSA2 scrambling remain to be implemented and validated.
+
+### Phase 5.4 — EMM PID insertion foundation — VERIFIED ON inst05
+
+Implemented CAT-derived EMM PID packetization/insertion:
+
+- `internal/mpegts/emm.go` adds an independent EMM PID injector.
+- `internal/service/emm.go` selects the EMM endpoint by CA System ID.
+- EMM datagrams are packetized as MPEG-2 sections onto the discovered EMM PID.
+- Independent continuity counter handling is included.
+- Tests verify PID, PUSI, pointer field, continuity counter and payload preservation.
+
+Verification on `inst05`:
+
+```text
+go test ./...       PASS
+go test -race ./... PASS
+go build ./...      PASS
+```
+
+Phase 5.4 is verified. EMMG-to-EMM insertion end-to-end validation is the next step.
 
 ## Planned phases
 
