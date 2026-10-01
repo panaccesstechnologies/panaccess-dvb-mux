@@ -26,10 +26,10 @@ func computeKey(cw [8]byte) [57]byte {
  return kk
 }
 
-func blockEncrypt(kk *[57]byte, in [8]byte) [8]byte {
+func blockEncrypt(kk *[56]byte, in [8]byte) [8]byte {
  var r [9]byte
  copy(r[1:],in[:])
- for i:=1;i<=56;i++ {
+ for i:=0;i<56;i++ {
   s:=blockSBox[kk[i]^r[8]]
   p:=blockPerm[s]
   next:=r[2]
@@ -47,10 +47,10 @@ func blockEncrypt(kk *[57]byte, in [8]byte) [8]byte {
  return out
 }
 
-func blockDecrypt(kk *[57]byte, in [8]byte) [8]byte {
+func blockDecrypt(kk *[56]byte, in [8]byte) [8]byte {
  var r [9]byte
  copy(r[1:],in[:])
- for i:=56;i>0;i-- {
+ for i:=55;i>=0;i-- {
   s:=blockSBox[kk[i]^r[7]]
   p:=blockPerm[s]
   next:=r[7]
