@@ -1,7 +1,7 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 4.4 — EMMG/MUX TCP foundation — READY FOR inst05 VERIFICATION  
+**Status:** Phase 4.4 — EMMG/MUX TCP foundation — VERIFIED ON inst05  
 **Updated:** 2026-10-01
 
 ## Phase 1 status
@@ -238,7 +238,7 @@ go build ./...
 
 After these pass, Phase 4.3 will be marked verified and the next step will connect the returned ECM datagram to the service's ECM PID signalling path.
 
-### Phase 4.4 — DVB-SimulCrypt EMMG/MUX TCP foundation — READY FOR inst05 VERIFICATION
+### Phase 4.4 — DVB-SimulCrypt EMMG/MUX TCP foundation — VERIFIED ON inst05
 
 Implemented against ETSI TS 103 197:
 
