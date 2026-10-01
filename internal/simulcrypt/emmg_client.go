@@ -78,10 +78,7 @@ func (c *EMMGClient) Provision(datagrams ...[]byte) error {
 		ClientID: c.cfg.ClientID, DataChannelID: c.cfg.DataChannelID,
 		DataStreamID: c.cfg.DataStreamID, DataID: c.cfg.DataID, Datagrams: datagrams,
 	}.Message()
-	if _, err := c.exchange(msg, EMMGMsgStreamStatus, EMMGMsgStreamError); err == nil {
-		return nil
-	}
-	// Data_provision has no protocol-level response. Write it directly.
+	// Data_provision has no protocol-level response on the TCP interface.
 	return c.writeMessage(msg)
 }
 
