@@ -1,7 +1,7 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 5.4 — EMM PID insertion foundation — VERIFIED ON inst05  
+**Status:** Phase 5.5 — EMMG transaction → EMM PID end-to-end integration — VERIFIED ON inst05  
 **Updated:** 2026-10-01
 
 ## Phase 1 status
@@ -331,6 +331,27 @@ go build ./...      PASS
 ```
 
 Phase 5.4 is verified. EMMG-to-EMM insertion end-to-end validation is the next step.
+
+### Phase 5.5 — EMMG transaction → EMM PID end-to-end integration — VERIFIED ON inst05
+
+Added end-to-end coverage for the existing EMMG TCP client and EMM insertion path:
+
+- EMMG channel setup.
+- EMMG stream setup.
+- EMMG `data_provision`.
+- EMM datagram preservation.
+- CAT-derived EMM PID selection.
+- MPEG-TS EMM packetization with PUSI, pointer field and continuity counter verification.
+
+Verification on `inst05`:
+
+```text
+go test ./...       PASS
+go test -race ./... PASS
+go build ./...      PASS
+```
+
+Phase 5.5 is verified. The next stage is DVB-CSA2 cryptographic implementation and known-answer testing.
 
 ## Planned phases
 
