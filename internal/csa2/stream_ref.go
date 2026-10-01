@@ -38,8 +38,8 @@ func refStreamSBoxes(A uint64) uint32 {
 
 func refStreamBSel(B uint64) uint32 {
 	t := B >> 9
-	return (((t)^(t>>27))&0x8) ^ ((t>>18)&0x9) ^ (((t>>22)^(t>>7))&0x4) ^
-		((t>>4)&0x5) ^ (((t>>24)^(t>>6)^(t>>11))&0x2) ^ (((t>>29)^(t>>23))&0x1) ^ ((t>>13)&0xe)
+	return uint32((((t)^(t>>27))&0x8) ^ ((t>>18)&0x9) ^ (((t>>22)^(t>>7))&0x4) ^
+		((t>>4)&0x5) ^ (((t>>24)^(t>>6)^(t>>11))&0x2) ^ (((t>>29)^(t>>23))&0x1) ^ ((t>>13)&0xe))
 }
 
 func refStreamCFED(pqzyx, cfed uint32) uint32 {
@@ -53,8 +53,8 @@ func refStreamRotate(pqzyx, x uint32) uint32 {
 
 func refStreamInitRound(iv uint32, A, B *uint64, pqzyx, cfed *uint32) {
 	*A <<= 4
-	*A |= (((*A >> 40) & 0xf) ^ (*pqzyx & 0xf) ^ (*cfed & 0xf) ^ (iv >> 4)) & 0xf
-	tmp := (((*B >> 24) & 0xf) ^ ((*B >> 36) & 0xf) ^ ((*pqzyx >> 4) & 0xf) ^ iv) & 0xf
+	*A |= uint64(uint32(((*A >> 40) & 0xf) ^ uint64(*pqzyx&0xf) ^ uint64(*cfed&0xf) ^ uint64(iv>>4)) & 0xf)
+	tmp := uint32((((*B >> 24) & 0xf) ^ ((*B >> 36) & 0xf) ^ uint64((*pqzyx>>4)&0xf) ^ uint64(iv)) & 0xf)
 	*B <<= 4
 	*B |= uint64(refStreamRotate(*pqzyx, tmp))
 	*cfed = refStreamCFED(*pqzyx, *cfed) ^ refStreamBSel(*B)
@@ -63,10 +63,10 @@ func refStreamInitRound(iv uint32, A, B *uint64, pqzyx, cfed *uint32) {
 
 func refStreamRound(A, B *uint64, pqzyx, cfed *uint32) {
 	*A <<= 4
-	*A |= (((*A >> 40) & 0xf) ^ (*pqzyx & 0xf)) & 0xf
-	tmp := (((*B >> 24) & 0xf) ^ ((*B >> 36) & 0xf) ^ ((*pqzyx >> 4) & 0xf)) & 0xf
+	*A |= uint64(uint32(((*A >> 40) & 0xf) ^ uint64(*pqzyx&0xf)) & 0xf)
+	tmp := uint32((((*B >> 24) & 0xf) ^ ((*B >> 36) & 0xf) ^ uint64((*pqzyx>>4)&0xf)) & 0xf)
 	*B <<= 4
-	*B |= refStreamRotate(*pqzyx, tmp)
+	*B |= uint64(refStreamRotate(*pqzyx, tmp))
 	*cfed = refStreamCFED(*pqzyx, *cfed) ^ refStreamBSel(*B)
 	*pqzyx = refStreamSBoxes(*A)
 }
