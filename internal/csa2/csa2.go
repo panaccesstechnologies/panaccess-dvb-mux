@@ -142,21 +142,17 @@ func Decrypt(data []byte, cw [8]byte) error {
  }
 
  alen:=len(data)&^7
- var b,prev [8]byte
- b=blockDecrypt(&kk,func() [8]byte {
-  var x [8]byte
-  copy(x[:],data[:8])
-  return x
- }())
- copy(data[:8],b[:])
+ var current, previousCipher [8]byte
+ copy(previousCipher[:], data[:8])
+ current=blockDecrypt(&kk, previousCipher)
+ copy(data[:8], current[:])
 
  for i:=8;i<alen;i+=8 {
-  copy(prev[:],data[i-8:i])
-  copy(b[:],data[i:i+8])
-  for j:=0;j<8;j++ { b[j]^=prev[j] }
-  b=blockDecrypt(&kk,b)
-  copy(data[i:i+8],b[:])
+  copy(current[:], data[i:i+8])
+  current=blockDecrypt(&kk,current)
+  for j:=0;j<8;j++ { current[j]^=previousCipher[j] }
+  copy(data[i:i+8],current[:])
+  copy(previousCipher[:], data[i:i+8])
  }
-
  return nil
 }
