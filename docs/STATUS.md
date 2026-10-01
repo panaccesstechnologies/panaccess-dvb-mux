@@ -367,7 +367,7 @@ Added `internal/csa2` with:
 
 The implementation is intentionally payload-only at this stage; MPEG-TS header/adaptation-field handling and scrambling-control signalling are not yet part of this phase.
 
-The encryption/decryption block chaining was corrected to match the public `libdvbcsa` reference semantics: final 8-byte block first, reverse block processing for encryption, stream stage after the first block, and the corresponding forward inverse for decryption. citeturn0search0turn0search1
+The encryption/decryption block chaining was corrected to match the public `libdvbcsa` reference semantics: final 8-byte block first, reverse block processing for encryption, stream stage after the first block, and the corresponding forward inverse for decryption. The stream-cipher state machine was then replaced with a direct Go translation of the classical `libdvbcsa` stream implementation, including its S-boxes, CDEF table, initialization rounds and output extraction. citeturn0search0turn0search1
 
 External validation basis: the public libdvbcsa project documents CSA as a block cipher plus stream cipher using the same 64-bit control word, and its test suite provides deterministic encryption vectors. citeturn0search0turn0search8
 
