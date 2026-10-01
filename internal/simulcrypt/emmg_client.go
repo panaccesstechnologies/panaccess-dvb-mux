@@ -40,6 +40,12 @@ func (c *EMMGClient) Connect() error {
 	return nil
 }
 
+func emmgParamValue(msg Message, typ uint16) []byte {
+	p, ok := msg.First(typ)
+	if !ok { return nil }
+	return p
+}
+
 func (c *EMMGClient) setupChannel() error {
 	msg := NewMessage(EMMGMsgChannelSetup,
 		Uint32Parameter(EMMGParamClientID, c.cfg.ClientID),
@@ -48,7 +54,7 @@ func (c *EMMGClient) setupChannel() error {
 	)
 	resp, err := c.exchange(msg, EMMGMsgChannelStatus, EMMGMsgChannelError)
 	if err != nil { return fmt.Errorf("EMMG channel setup: %w", err) }
-	if v, err := Uint32Value(paramFromMessage(resp, EMMGParamClientID)); err != nil || v != c.cfg.ClientID {
+	if v, err := Uint32Value(emmgParamValue(resp, EMMGParamClientID)); err != nil || v != c.cfg.ClientID {
 		return fmt.Errorf("EMMG channel status client_id mismatch")
 	}
 	return nil
