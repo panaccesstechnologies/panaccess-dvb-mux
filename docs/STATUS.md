@@ -387,3 +387,12 @@ A Go array-to-slice compile issue in the CSA2 block chaining code was corrected 
 - Phase 8 — Web API and real-time Web GUI
 - Phase 9 — Docker deployment, observability and operational tooling
 - Phase 10 — interoperability, fault-injection and acceptance testing
+
+
+### CSA2 KAT isolation update
+- `inst05` reached the CSA2 known-answer test after the stream reference compiled.
+- KAT failed with ciphertext beginning `063442...` versus the upstream `libdvbcsa` vector beginning `2d0a47...`.
+- The first 8 bytes are produced by the block stage before stream XOR, so the failure was isolated to the block key schedule rather than the stream cipher.
+- Replaced the previous legacy `keyPerm` translation with an exact 64-bit basis-mask representation of upstream `libdvbcsa` `kperm[8][256]` semantics.
+- Commit: `5f87864076d45d8bcf2fc35bb1de4bddd8d7d6a4`.
+- Phase 6.1 remains **PENDING** until `inst05` KAT, full tests, race tests, and build pass.
