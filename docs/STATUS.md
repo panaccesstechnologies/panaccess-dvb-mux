@@ -399,4 +399,8 @@ A Go array-to-slice compile issue in the CSA2 block chaining code was corrected 
 
 - Follow-up comparison against all 2048 upstream `kperm` entries found 10 incorrect basis masks in the previous translation; these have now been regenerated directly from `kperm[row][1<<bit]`.
 - Latest CSA2 key-schedule commit: `f32c9ec2d3421dcb6ce835be448f599ffe880200`.
-- Phase 6.1 remains **PENDING** until the inst05 KAT passes.
+- inst05 still failed the KAT after the exact `kperm` regeneration, so Phase 6.1 remains **PENDING**.
+- Source-level comparison against pinned libdvbcsa identified an additional integration issue: the stream cipher consumes the nibble-swapped control word (`cws`), not the raw CW. The Go stream path now applies that transformation before keystream generation.
+- The copied libdvbcsa test vector is a decrypt-direction acceptance vector: upstream `testdec.c` feeds the `in` plaintext vector to `dvbcsa_decrypt()` and expects the `out` ciphertext vector; `testenc.c` performs the inverse direction. The Go KAT has been corrected to validate `Decrypt(plaintext) == ciphertext` and then the reverse `Encrypt(ciphertext) == plaintext`.
+- Correction commits: `31fe9f909e08937cd7790731cab6d39bf79952d5` and `fd46ad12790a4491c2c8ec598dfaa70cfa142218`.
+- Phase 6.1 remains **PENDING** until the corrected KAT, full tests, race tests and build pass on `inst05`.
