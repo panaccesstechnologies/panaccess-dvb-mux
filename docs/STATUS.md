@@ -353,6 +353,24 @@ go build ./...      PASS
 
 Phase 5.5 is verified. The next stage is DVB-CSA2 cryptographic implementation and known-answer testing.
 
+### Phase 6.1 — DVB-CSA2 pure-Go cipher foundation — READY FOR inst05 VERIFICATION
+
+Added `internal/csa2` with:
+
+- 64-bit control-word handling.
+- CSA2 key expansion.
+- 56-round block cipher.
+- CSA2 stream cipher state and keystream generation.
+- Payload encryption/decryption primitives.
+- Known-answer test derived from the public `libdvbcsa` test suite.
+- Short-payload validation.
+
+The implementation is intentionally payload-only at this stage; MPEG-TS header/adaptation-field handling and scrambling-control signalling are not yet part of this phase.
+
+External validation basis: the public libdvbcsa project documents CSA as a block cipher plus stream cipher using the same 64-bit control word, and its test suite provides deterministic encryption vectors. citeturn0search0turn0search8
+
+**Verification:** pending `inst05`.
+
 ## Planned phases
 
 - Phase 3.1 — PSI/CA service discovery model
