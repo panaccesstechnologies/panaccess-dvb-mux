@@ -154,7 +154,11 @@ go test -race ./... PASS
 go build ./...      PASS
 ```
 
-The next implementation target is the connection-oriented ECMG ⇔ SCS TLV protocol. The implementation will start with protocol framing, message-type constants, parameter encoding/decoding, and deterministic vectors before opening TCP sessions. No ECM generation is claimed yet.
+Phase 4.1 has now added the initial ECMG ⇔ SCS TLV codec in `internal/simulcrypt/ecmg.go` with protocol version `0x03`, ECMG message-type constants, parameter-type constants, big-endian parameter helpers, and strict message/parameter length validation. Deterministic wire-format tests are in `internal/simulcrypt/ecmg_test.go`.
+
+The codec is deliberately transport-neutral at this step: it does not open TCP connections, negotiate a channel, generate ECMs, or expose CWs. Those behaviors will be added only after this wire-format layer is verified on `inst05`.
+
+ETSI TS 103 197 defines the ECMG ⇔ SCS generic message as protocol_version + message_type + message_length followed by TLV parameters, with ECMG/SCS protocol version `0x03`; the specified ECMG message types include channel_setup, stream_setup, CW_provision and ECM_response. citeturn4view0turn2view1turn3view1 The implementation will start with protocol framing, message-type constants, parameter encoding/decoding, and deterministic vectors before opening TCP sessions. No ECM generation is claimed yet.
 
 ETSI TS 103 197 specifies ECMG ⇔ SCS as a TCP-based connection-oriented interface. The generic message contains protocol_version, message_type, message_length, followed by TLV parameters; ECMG/SCS uses protocol version `0x03`. Channel setup precedes stream setup, and CW_provision produces an ECM_response. citeturn4view0turn3view1
 
