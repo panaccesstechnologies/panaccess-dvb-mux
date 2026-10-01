@@ -1,7 +1,7 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 4.2 — ECMG TCP client/session — VERIFIED ON inst05  
+**Status:** Phase 4.4 — EMMG/MUX TCP foundation — READY FOR inst05 VERIFICATION  
 **Updated:** 2026-10-01
 
 ## Phase 1 status
@@ -237,6 +237,35 @@ go build ./...
 ```
 
 After these pass, Phase 4.3 will be marked verified and the next step will connect the returned ECM datagram to the service's ECM PID signalling path.
+
+### Phase 4.4 — DVB-SimulCrypt EMMG/MUX TCP foundation — READY FOR inst05 VERIFICATION
+
+Implemented against ETSI TS 103 197:
+
+- EMMG/MUX protocol message types for channel, stream, bandwidth and Data_provision.
+- EMMG parameter types: client_id, section_TSpkt_flag, data_channel_id, data_stream_id, datagram, bandwidth, data_type, and data_id.
+- TCP channel setup/status lifecycle.
+- TCP stream setup/status lifecycle.
+- EMM Data_provision generation with one or more datagrams.
+- Stream close request/response.
+- Deterministic localhost integration test covering channel setup → stream setup → EMM data provision → stream close.
+- EMM test profile uses CA-derived client_id 0x4AFC0001, data channel 1, data stream 1, data ID 100, and section-format EMM data.
+
+The implementation intentionally starts with the TCP-based control/data interface. ETSI TS 103 197 specifies the EMMG/PDG as the TCP client and MUX as the server, with Data_provision carrying EMM/private data; the UDP variant uses the same message format but sends only Data_provision over UDP.
+
+Important: Data_provision has no response message. The client therefore writes it without waiting for a reply.
+
+This phase does not yet insert received EMM datagrams into the MPEG-TS and does not yet perform DVB-CSA2 scrambling.
+
+Verification on inst05:
+
+    cd ~/panaccess-dvb-mux
+    git pull --ff-only
+    go test ./...
+    go test -race ./...
+    go build ./...
+
+After these pass, Phase 4.4 will be marked verified and the next step will be the first end-to-end ECM/EMM integration into the 5-stream MPEG-TS pipeline.
 
 ## Planned phases
 
