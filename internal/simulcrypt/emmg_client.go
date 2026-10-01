@@ -43,7 +43,7 @@ func (c *EMMGClient) Connect() error {
 func emmgParamValue(msg Message, typ uint16) Parameter {
 	p, ok := msg.First(typ)
 	if !ok { return Parameter{Type: typ} }
-	return p
+	return Parameter{Type: typ, Value: p}
 }
 
 func (c *EMMGClient) setupChannel() error {
