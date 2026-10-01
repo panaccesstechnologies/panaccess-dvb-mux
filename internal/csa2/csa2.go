@@ -103,12 +103,12 @@ func Encrypt(data []byte, cw [8]byte) error {
  var b [8]byte
  copy(b[:],data[last:last+8])
  b=blockEncrypt(&kk,b)
- copy(data[last:last+8],b)
+ copy(data[last:last+8],b[:])
 
  for i:=last-8;i>=0;i-=8 {
   for j:=0;j<8;j++ { b[j]=data[i+j]^data[i+8+j] }
   b=blockEncrypt(&kk,b)
-  copy(data[i:i+8],b)
+  copy(data[i:i+8],b[:])
  }
 
  // The first encrypted block is the stream-cipher IV. The stream stage
