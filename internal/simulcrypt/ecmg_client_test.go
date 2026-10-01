@@ -134,6 +134,42 @@ func TestECMGClientChannelAndStreamLifecycle(t *testing.T) {
 			serverDone <- err
 			return
 		}
+		msg, err = readTestMessage(conn)
+		if err != nil {
+			serverDone <- err
+			return
+		}
+		if msg.Type != MsgCWProvision {
+			serverDone <- fmt.Errorf("got message 0x%04x, want CW_provision", msg.Type)
+			return
+		}
+		if v, err := Uint16Value(paramFromMessage(msg, ParamCPNumber)); err != nil || v != 10 {
+			serverDone <- fmt.Errorf("bad CP number")
+			return
+		}
+		combo := paramFromMessage(msg, ParamCPCWCombination)
+		if len(combo.Value) != 10 || combo.Value[0] != 0 || combo.Value[1] != 10 {
+			serverDone <- fmt.Errorf("bad CP/CW combination")
+			return
+		}
+		if v, err := Uint16Value(paramFromMessage(msg, ParamCPDuration)); err != nil || v != 2000 {
+			serverDone <- fmt.Errorf("bad CP duration in CW provision")
+			return
+		}
+		if got := string(paramFromMessage(msg, ParamAccessCriteria).Value); got != "test-ac" {
+			serverDone <- fmt.Errorf("bad access criteria: %q", got)
+			return
+		}
+		if err := writeTestMessage(conn, NewMessage(MsgECMResponse,
+			Uint16Parameter(ParamECMChannelID, 1),
+			Uint16Parameter(ParamECMStreamID, 1),
+			Uint16Parameter(ParamCPNumber, 10),
+			BytesParameter(ParamECMDatagram, []byte{0x80, 0x01, 0x02, 0x03, 0x04}),
+		)); err != nil {
+			serverDone <- err
+			return
+		}
+
 		if msg.Type != MsgStreamCloseReq {
 			serverDone <- fmt.Errorf("got message 0x%04x, want stream_close_request", msg.Type)
 			return
@@ -175,6 +211,20 @@ func TestECMGClientChannelAndStreamLifecycle(t *testing.T) {
 	}
 	if err := client.TestStream(); err != nil {
 		t.Fatal(err)
+	}
+	duration := uint16(2000)
+	ecm, err := client.ProvisionCW(10, []CPControlWord{{
+		CP: 10,
+		CW: []byte{1, 2, 3, 4, 5, 6, 7, 8},
+	}}, &duration, []byte("test-ac"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ecm.ChannelID != 1 || ecm.StreamID != 1 || ecm.CPNumber != 10 {
+		t.Fatalf("unexpected ECM response identity: %+v", ecm)
+	}
+	if got, want := ecm.ECMDatagram, []byte{0x80, 0x01, 0x02, 0x03, 0x04}; string(got) != string(want) {
+		t.Fatalf("unexpected ECM datagram: %x", got)
 	}
 	if err := client.CloseStream(); err != nil {
 		t.Fatal(err)
