@@ -3,7 +3,7 @@ package csa2
 func swapNibble(v byte) byte { return (v >> 4) | (v << 4) }
 
 func computeKey(cw [8]byte) [57]byte {
- var kk [57]byte
+ var kk [56]byte
  var kb [8][8]byte
  copy(kb[7][:], cw[:])
  for i:=0;i<7;i++ {
@@ -21,7 +21,7 @@ func computeKey(cw [8]byte) [57]byte {
   }
  }
  for i:=0;i<7;i++ {
-  for j:=0;j<8;j++ { kk[1+i*8+j]=kb[1+i][j]^byte(i) }
+  for j:=0;j<8;j++ { kk[i*8+j]=kb[i][j]^byte(i) }
  }
  return kk
 }
