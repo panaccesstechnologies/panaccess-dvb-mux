@@ -1,8 +1,8 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 2 — IP transport foundation  
-**Updated:** 2026-09-26
+**Status:** Phase 3.1 — PSI/CA service discovery model  
+**Updated:** 2026-10-01
 
 ## Phase 1 status
 
@@ -102,28 +102,69 @@ This verifies the live Linux multicast egress path at the MPEG-TS content level,
 
 **Phase 2.14 status: 🟢 VERIFIED — LIVE LINUX NETWORK + TSDUCK VALIDATION**
 
+## Phase 3 progress
+
+### Phase 3.1 — PSI/CA service discovery model — IMPLEMENTED, NOT YET VERIFIED ON inst05
+
+The initial 5-stream development profile has been selected because `inst05` is a small test host. The user confirmed that all five streams use the same CA signalling pattern observed in the analyzer.
+
+Observed test profile for the five streams:
+
+- Service IDs are service-specific; Stream 1 was confirmed as service `101`.
+- Stream 1 PMT PID: `0x0100`.
+- Stream 1 video PID: `0x0201`.
+- Stream 1 audio/PCR PID: `0x0200`.
+- PMT CA descriptor: CA System ID `0x4AFC`, CA PID `0x1FFE`.
+- CAT CA descriptor: CA System ID `0x4AFC`, CA PID `0x1FFE`.
+- The same CA signalling pattern was confirmed by the user for Streams 2–5.
+
+Implementation added:
+
+- `internal/mpegts/ca.go`
+  - MPEG-2/DVB CA descriptor (tag `0x09`) parser.
+  - CA System ID, CA PID and private-data preservation.
+  - CAT section marshal/parse with CRC validation.
+- `internal/mpegts/ca_test.go`
+  - CA descriptor parsing tests.
+  - Unknown-descriptor handling test.
+  - CAT round-trip test.
+- `internal/service/service.go`
+  - Normalized service model containing service ID, PMT/PCR, elementary streams, ECM endpoints and EMM endpoints.
+  - Discovery from PAT program + PMT + CAT.
+- `internal/service/service_test.go`
+  - Service 101 CA discovery test using CA System ID `0x4AFC` and CA PID `0x1FFE`.
+
+**Important:** this phase only discovers and models existing CA signalling. It does **not** yet generate ECMs, generate EMMs, implement ECMG/EMMG, or scramble payloads.
+
+The implementation is based on the MPEG-2/DVB CA descriptor structure and the project's EN 300 468 PSI/SI reference set. ETSI EN 300 468 defines CA-related signalling within DVB PSI/SI; the SimulCrypt ECMG/EMMG protocol itself is a separate specification and remains a later phase.
+
 ## TSDuck
 
-Phase 1 fixture remains the bitstream acceptance gate and is verified on `inst05`. The Phase 2.14 live multicast capture has now also been validated directly with TSDuck's `pcap` input plugin and `analyze` processor.
+Phase 1 fixture remains the bitstream acceptance gate and is verified on `inst05`. The Phase 2.14 live multicast capture has also been validated directly with TSDuck's `pcap` input plugin and `analyze` processor.
 
 ## Current phase
 
-### Phase 2.15 — High-density transport optimization — BASELINE DEFINED
+### Phase 3.1 — PSI/CA service discovery model — IMPLEMENTED, VERIFICATION PENDING
 
-Phase 2.15 has started with a reproducible performance-baseline plan in `docs/PHASE2.15-PERFORMANCE.md`. The first measurement levels are 1, 10, 50 and 100 concurrent SPTS. Each level must record throughput, packet/CC/PCR errors, queue/back-pressure behavior, CPU, memory and clean shutdown before being marked verified.
+Next verification on `inst05`:
 
-The implementation has not yet been performance-optimized or validated at those density levels. Do not mark Phase 2.15 VERIFIED until measurements are executed on the target Linux host.
+```text
+git pull --ff-only
+go test ./...
+go test -race ./...
+go build ./...
+```
 
-The current runtime uses a bounded Go channel as the back-pressure boundary and creates a batch slice in the run loop; these are candidates for optimization after the baseline is captured.
+After that passes, the next implementation step is **Phase 4.1: SimulCrypt ECMG protocol foundation**, beginning with the ECMG-side connection/session/message model and deterministic test vectors. No ECM/EMM generation will be claimed until that layer is implemented and tested.
 
-**Specification compliance note:** the current implementation remains Go-based; the broader project requirement previously identified Rust or C++20 as the implementation target. This remains a separate compliance gap and should not be conflated with the successful Phase 2.14 functional validation.
+**Specification compliance note:** the current implementation remains Go-based; the broader project requirement previously identified Rust or C++20 as the implementation target. This remains a separate compliance gap and should not be conflated with successful functional validation.
 
 ## Planned phases
 
-- Phase 2.15 — High-density transport optimization (baseline plan defined)
-- Phase 3 — PSI/SI regeneration and scheduling
-- Phase 4 — DVB-SimulCrypt SCS/ECMG/EMMG protocol layer
-- Phase 5 — ECM/EMM integration
+- Phase 3.1 — PSI/CA service discovery model
+- Phase 4.1 — DVB-SimulCrypt ECMG protocol foundation
+- Phase 4.2 — DVB-SimulCrypt EMMG/MUX protocol foundation
+- Phase 5 — ECM/EMM integration into the 5-stream service pipeline
 - Phase 6 — DVB-CSA2 scrambling engine integration
 - Phase 7 — 500+ service concurrency, NUMA/threading and performance tuning
 - Phase 8 — Web API and real-time Web GUI
