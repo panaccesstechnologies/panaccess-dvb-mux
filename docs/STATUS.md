@@ -203,7 +203,7 @@ go build ./...
 
 After those pass, Phase 4.2 will be marked verified on `inst05`. The next development step will be controlled ECMG `CW_provision` / `ECM_response` handling.
 
-### Phase 4.3 — ECMG CW_provision / ECM_response — READY FOR inst05 VERIFICATION
+### Phase 4.3 — ECMG CW_provision / ECM_response — VERIFIED ON inst05
 
 Implemented:
 
@@ -221,6 +221,12 @@ ETSI TS 103 197 defines `CW_provision` as the SCS request to compute an ECM, wit
 This phase still does **not** generate an ECM locally and does **not** perform DVB-CSA2 scrambling. The mock server only returns deterministic test ECM bytes.
 
 **Verification on inst05:**
+
+Commit `3be5ca392e07f0f5194da7c492022b4bb916d9e0` was pulled and verified with `go test ./...`, `go test -race ./...`, and `go build ./...`; all passed.
+
+**Phase 4.3 status: 🟢 VERIFIED ON inst05**
+
+The next development step is ECM datagram integration into the service's ECM PID signalling path. This still precedes DVB-CSA2 scrambling.
 
 ```bash
 cd ~/panaccess-dvb-mux
