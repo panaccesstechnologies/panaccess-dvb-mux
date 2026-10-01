@@ -1,7 +1,7 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 3.1 — PSI/CA service discovery model  
+**Status:** Phase 4.1 — DVB-SimulCrypt ECMG protocol foundation  
 **Updated:** 2026-10-01
 
 ## Phase 1 status
@@ -104,7 +104,7 @@ This verifies the live Linux multicast egress path at the MPEG-TS content level,
 
 ## Phase 3 progress
 
-### Phase 3.1 — PSI/CA service discovery model — IMPLEMENTED, NOT YET VERIFIED ON inst05
+### Phase 3.1 — PSI/CA service discovery model — VERIFIED ON inst05
 
 The initial 5-stream development profile has been selected because `inst05` is a small test host. The user confirmed that all five streams use the same CA signalling pattern observed in the analyzer.
 
@@ -144,18 +144,19 @@ Phase 1 fixture remains the bitstream acceptance gate and is verified on `inst05
 
 ## Current phase
 
-### Phase 3.1 — PSI/CA service discovery model — IMPLEMENTED, VERIFICATION PENDING
+### Phase 4.1 — DVB-SimulCrypt ECMG protocol foundation — IN PROGRESS
 
-Next verification on `inst05`:
+Phase 3.1 was verified on `inst05` after pulling commit `a7403e8`:
 
 ```text
-git pull --ff-only
-go test ./...
-go test -race ./...
-go build ./...
+go test ./...       PASS
+go test -race ./... PASS
+go build ./...      PASS
 ```
 
-After that passes, the next implementation step is **Phase 4.1: SimulCrypt ECMG protocol foundation**, beginning with the ECMG-side connection/session/message model and deterministic test vectors. No ECM/EMM generation will be claimed until that layer is implemented and tested.
+The next implementation target is the connection-oriented ECMG ⇔ SCS TLV protocol. The implementation will start with protocol framing, message-type constants, parameter encoding/decoding, and deterministic vectors before opening TCP sessions. No ECM generation is claimed yet.
+
+ETSI TS 103 197 specifies ECMG ⇔ SCS as a TCP-based connection-oriented interface. The generic message contains protocol_version, message_type, message_length, followed by TLV parameters; ECMG/SCS uses protocol version `0x03`. Channel setup precedes stream setup, and CW_provision produces an ECM_response. citeturn4view0turn3view1
 
 **Specification compliance note:** the current implementation remains Go-based; the broader project requirement previously identified Rust or C++20 as the implementation target. This remains a separate compliance gap and should not be conflated with successful functional validation.
 
