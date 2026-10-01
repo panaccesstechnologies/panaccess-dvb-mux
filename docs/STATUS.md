@@ -373,6 +373,8 @@ External validation basis: the public libdvbcsa project documents CSA as a block
 
 **Verification:** pending `inst05`.
 
+A Go array-to-slice compile issue in the CSA2 block chaining code was corrected after inst05 verification exposed it. The affected `copy()` calls now use `b[:]`.
+
 ## Planned phases
 
 - Phase 3.1 — PSI/CA service discovery model
