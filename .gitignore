@@ -1,0 +1,6 @@
+
+# Local transport/TSDuck capture artifacts
+*.pcap
+*.pcapng
+
+build/
