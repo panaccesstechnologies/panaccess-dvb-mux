@@ -1,7 +1,7 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 4.1 — DVB-SimulCrypt ECMG protocol foundation — VERIFIED ON inst05  
+**Status:** Phase 4.2 — ECMG TCP client/session — READY FOR inst05 VERIFICATION  
 **Updated:** 2026-10-01
 
 ## Phase 1 status
@@ -171,6 +171,37 @@ The ECMG codec is therefore **verified as a wire-format component**. This does n
 ETSI TS 103 197 specifies ECMG ⇔ SCS as a TCP-based connection-oriented interface using protocol version `0x03`. Channel setup precedes stream setup, and CW_provision produces an ECM_response. The next implementation step is the TCP session/client layer, followed by a controlled interoperability test against an ECMG endpoint.
 
 **Specification compliance note:** the current implementation remains Go-based; the broader project requirement previously identified Rust or C++20 as the implementation target. This remains a separate compliance gap and should not be conflated with successful functional validation.
+
+### Phase 4.2 — DVB-SimulCrypt ECMG TCP client/session — READY FOR inst05 VERIFICATION
+
+Implemented:
+
+- TCP ECMG client with configurable dial/I/O timeouts.
+- One-channel-per-TCP-connection lifecycle.
+- `channel_setup` with `ECM_channel_id` and `Super_CAS_id`.
+- `channel_status` / `channel_error` response handling.
+- `stream_setup` with `ECM_channel_id`, `ECM_stream_id`, `ECM_id` and `nominal_CP_duration`.
+- `stream_status` / `stream_error` response handling.
+- Channel and stream test requests.
+- Stream close request/response handling.
+- Strict framed TCP reads using the existing ECMG codec.
+- Deterministic localhost mock-ECMG lifecycle test covering channel setup, stream setup, channel test, stream test and stream close.
+
+GitHub Actions Go Test run #58 for commit `57cea10f3b467aa6e69c01a48a805ae9149fcbb4` completed successfully.
+
+This phase intentionally does **not** generate ECMs or CWs and does not connect to a production ECMG endpoint yet. ETSI TS 103 197 defines the SCS as the TCP client and requires channel establishment before stream establishment; this implementation follows that lifecycle. citeturn1search12turn1search13
+
+**Next verification on inst05:**
+
+```bash
+cd ~/panaccess-dvb-mux
+git pull --ff-only
+go test ./...
+go test -race ./...
+go build ./...
+```
+
+After those pass, Phase 4.2 will be marked verified on `inst05`. The next development step will be controlled ECMG `CW_provision` / `ECM_response` handling.
 
 ## Planned phases
 
