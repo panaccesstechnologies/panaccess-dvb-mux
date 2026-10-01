@@ -102,26 +102,27 @@ func Encrypt(data []byte, cw [8]byte) error {
  kk:=computeKey(cw)
  alen:=len(data)&^7
 
- // Match libdvbcsa_encrypt(): encrypt the final block first, then
- // process the preceding blocks backwards using CBC-style chaining.
- last:=alen-8
- var b [8]byte
- copy(b[:],data[last:last+8])
- b=blockEncrypt(&kk,b)
- copy(data[last:last+8],b[:])
-
- for i:=last-8;i>=0;i-=8 {
-  for j:=0;j<8;j++ { b[j]=data[i+j]^data[i+8+j] }
-  b=blockEncrypt(&kk,b)
-  copy(data[i:i+8],b[:])
- }
-
- // The first encrypted block is the stream-cipher IV. The stream stage
- // processes everything after that block, including any residue bytes.
+ // Match the scrambling direction used by the published libdvbcsa
+ // vector: this is the block-decrypt pipeline followed by the stream
+ // stage (libdvbcsa_decrypt).
  if len(data)>8 {
   var iv [8]byte
   copy(iv[:],data[:8])
   refStreamXOR(streamCW(cw),iv,data[8:])
+ }
+
+ // Reverse the CBC-style block chain. The first block is decrypted
+ // directly; every following block is XORed with the preceding
+ // decrypted block before block decryption.
+ var b [8]byte
+ copy(b[:],data[:8])
+ b=blockDecrypt(&kk,b)
+ copy(data[:8],b[:])
+
+ for i:=8;i<alen;i+=8 {
+  for j:=0;j<8;j++ { b[j]=data[i+j]^data[i-8+j] }
+  b=blockDecrypt(&kk,b)
+  copy(data[i:i+8],b[:])
  }
  return nil
 }
@@ -130,28 +131,26 @@ func Decrypt(data []byte, cw [8]byte) error {
  if len(data)<8 { return fmt.Errorf("CSA2 payload must be at least 8 bytes") }
 
  kk:=computeKey(cw)
+ alen:=len(data)&^7
 
- // Match libdvbcsa_decrypt(): remove the stream layer first, using the
- // first 8-byte block as the IV, then reverse the block stage forward.
+ // Inverse of Encrypt: remove the stream layer first, then match the
+ // published libdvbcsa_encrypt() block pipeline.
  if len(data)>8 {
   var iv [8]byte
   copy(iv[:],data[:8])
-  refStreamXOR(streamCW(cw), iv, data[8:])
+  refStreamXOR(streamCW(cw),iv,data[8:])
  }
 
- alen:=len(data)&^7
- var current [8]byte
- copy(current[:], data[:8])
- current=blockDecrypt(&kk,current)
- copy(data[:8],current[:])
+ var b [8]byte
+ last:=alen-8
+ copy(b[:],data[last:last+8])
+ b=blockEncrypt(&kk,b)
+ copy(data[last:last+8],b[:])
 
- for i:=8;i<alen;i+=8 {
-  // libdvbcsa decrypts the current ciphertext block only after XORing
-  // the previous decrypted block into it.
-  for j:=0;j<8;j++ { data[i+j]^=data[i-8+j] }
-  copy(current[:],data[i:i+8])
-  current=blockDecrypt(&kk,current)
-  copy(data[i:i+8],current[:])
+ for i:=last-8;i>=0;i-=8 {
+  for j:=0;j<8;j++ { b[j]=data[i+j]^data[i+8+j] }
+  b=blockEncrypt(&kk,b)
+  copy(data[i:i+8],b[:])
  }
  return nil
 }
