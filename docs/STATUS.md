@@ -1,7 +1,7 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 4.2 — ECMG TCP client/session — READY FOR inst05 VERIFICATION  
+**Status:** Phase 4.2 — ECMG TCP client/session — VERIFIED ON inst05  
 **Updated:** 2026-10-01
 
 ## Phase 1 status
@@ -172,7 +172,7 @@ ETSI TS 103 197 specifies ECMG ⇔ SCS as a TCP-based connection-oriented interf
 
 **Specification compliance note:** the current implementation remains Go-based; the broader project requirement previously identified Rust or C++20 as the implementation target. This remains a separate compliance gap and should not be conflated with successful functional validation.
 
-### Phase 4.2 — DVB-SimulCrypt ECMG TCP client/session — READY FOR inst05 VERIFICATION
+### Phase 4.2 — DVB-SimulCrypt ECMG TCP client/session — VERIFIED ON inst05
 
 Implemented:
 
