@@ -134,11 +134,9 @@ func Decrypt(data []byte, cw [8]byte) error {
  // Match libdvbcsa_decrypt(): remove the stream layer first, using the
  // first 8-byte block as the IV, then reverse the block stage forward.
  if len(data)>8 {
-  var st streamState
   var iv [8]byte
   copy(iv[:],data[:8])
-  st.init(streamCW(cw),iv)
-  st.xor(data[8:])
+  refStreamXOR(streamCW(cw), iv, data[8:])
  }
 
  alen:=len(data)&^7
