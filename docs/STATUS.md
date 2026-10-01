@@ -1,7 +1,7 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 5.1 — ECM PID packetization/injection foundation — VERIFIED ON inst05  
+**Status:** Phase 5.2 — ECMG response → ECM PID integration — VERIFIED ON inst05  
 **Updated:** 2026-10-01
 
 ## Phase 1 status
@@ -266,6 +266,28 @@ Verification on inst05:
     go build ./...
 
 After these pass, Phase 4.4 will be marked verified and the next step will be the first end-to-end ECM/EMM integration into the 5-stream MPEG-TS pipeline.
+
+### Phase 5.2 — ECMG response → service ECM PID integration — VERIFIED ON inst05
+
+Implemented the bridge from a validated ECMG `ECM_response` to the service's discovered ECM PID:
+
+- `internal/service/ecm.go` adds `ECMInserter`.
+- Selects the ECM endpoint by CA System ID.
+- Uses the discovered CA PID as the ECM PID.
+- Packetizes the returned `ECMDatagram` with the MPEG-TS section packetizer.
+- Maintains an independent ECM PID continuity counter.
+- Rejects invalid/empty ECM responses.
+- Integration test covers service 101, CA System ID `0x4AFC`, ECM PID `0x1FFE`, PUSI, pointer field and payload preservation.
+
+Verification on `inst05`:
+
+```text
+go test ./...       PASS
+go test -race ./... PASS
+go build ./...      PASS
+```
+
+Phase 5.2 is verified. This still does not scramble payload packets.
 
 ## Planned phases
 
