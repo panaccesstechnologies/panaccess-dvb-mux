@@ -7,6 +7,11 @@ package csa2
 
 import "fmt"
 
+func streamCW(cw [8]byte) [8]byte {
+ for i := range cw { cw[i] = swapNibble(cw[i]) }
+ return cw
+}
+
 var keyPerm = [64]byte{
 	0x12,0x24,0x09,0x07,0x2A,0x31,0x1D,0x15,0x1C,0x36,0x3E,0x32,0x13,0x21,0x3B,0x40,
 	0x18,0x14,0x25,0x27,0x02,0x35,0x1B,0x01,0x22,0x04,0x0D,0x0E,0x39,0x28,0x1A,0x29,
@@ -116,7 +121,7 @@ func Encrypt(data []byte, cw [8]byte) error {
  if len(data)>8 {
   var iv [8]byte
   copy(iv[:],data[:8])
-  refStreamXOR(cw,iv,data[8:])
+  refStreamXOR(streamCW(cw),iv,data[8:])
  }
  return nil
 }
@@ -132,7 +137,7 @@ func Decrypt(data []byte, cw [8]byte) error {
   var st streamState
   var iv [8]byte
   copy(iv[:],data[:8])
-  st.init(cw,iv)
+  st.init(streamCW(cw),iv)
   st.xor(data[8:])
  }
 
