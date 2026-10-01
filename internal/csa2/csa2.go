@@ -142,17 +142,18 @@ func Decrypt(data []byte, cw [8]byte) error {
  }
 
  alen:=len(data)&^7
- var current, previousCipher [8]byte
- copy(previousCipher[:], data[:8])
- current=blockDecrypt(&kk, previousCipher)
- copy(data[:8], current[:])
+ var current [8]byte
+ copy(current[:], data[:8])
+ current=blockDecrypt(&kk,current)
+ copy(data[:8],current[:])
 
  for i:=8;i<alen;i+=8 {
-  copy(current[:], data[i:i+8])
+  // libdvbcsa decrypts the current ciphertext block only after XORing
+  // the previous decrypted block into it.
+  for j:=0;j<8;j++ { data[i+j]^=data[i-8+j] }
+  copy(current[:],data[i:i+8])
   current=blockDecrypt(&kk,current)
-  for j:=0;j<8;j++ { current[j]^=previousCipher[j] }
   copy(data[i:i+8],current[:])
-  copy(previousCipher[:], data[i:i+8])
  }
  return nil
 }
