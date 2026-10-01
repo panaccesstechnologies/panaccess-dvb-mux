@@ -2,6 +2,7 @@ package simulcrypt
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -91,6 +92,59 @@ func TestECMGClientChannelAndStreamLifecycle(t *testing.T) {
 			serverDone <- err
 			return
 		}
+
+		msg, err = readTestMessage(conn)
+		if err != nil {
+			serverDone <- err
+			return
+		}
+		if msg.Type != MsgChannelTest {
+			serverDone <- fmt.Errorf("got message 0x%04x, want channel_test", msg.Type)
+			return
+		}
+		if err := writeTestMessage(conn, NewMessage(MsgChannelStatus,
+			Uint16Parameter(ParamECMChannelID, 1),
+			Uint8Parameter(ParamSectionTSPktFlag, 0),
+		)); err != nil {
+			serverDone <- err
+			return
+		}
+
+		msg, err = readTestMessage(conn)
+		if err != nil {
+			serverDone <- err
+			return
+		}
+		if msg.Type != MsgStreamTest {
+			serverDone <- fmt.Errorf("got message 0x%04x, want stream_test", msg.Type)
+			return
+		}
+		if err := writeTestMessage(conn, NewMessage(MsgStreamStatus,
+			Uint16Parameter(ParamECMChannelID, 1),
+			Uint16Parameter(ParamECMStreamID, 1),
+			Uint16Parameter(ParamECMID, 101),
+			Uint8Parameter(ParamAccessCriteriaTransferMode, 0),
+		)); err != nil {
+			serverDone <- err
+			return
+		}
+
+		msg, err = readTestMessage(conn)
+		if err != nil {
+			serverDone <- err
+			return
+		}
+		if msg.Type != MsgStreamCloseReq {
+			serverDone <- fmt.Errorf("got message 0x%04x, want stream_close_request", msg.Type)
+			return
+		}
+		if err := writeTestMessage(conn, NewMessage(MsgStreamCloseResp,
+			Uint16Parameter(ParamECMChannelID, 1),
+			Uint16Parameter(ParamECMStreamID, 1),
+		)); err != nil {
+			serverDone <- err
+			return
+		}
 		serverDone <- nil
 	}()
 
@@ -140,12 +194,12 @@ func paramFromMessage(m Message, typ uint16) Parameter {
 
 func readTestMessage(conn net.Conn) (Message, error) {
 	var hdr [5]byte
-	if _, err := conn.Read(hdr[:]); err != nil {
+	if _, err := io.ReadFull(conn, hdr[:]); err != nil {
 		return Message{}, err
 	}
 	body := make([]byte, int(hdr[3])<<8|int(hdr[4]))
 	if len(body) > 0 {
-		if _, err := conn.Read(body); err != nil {
+		if _, err := io.ReadFull(conn, body); err != nil {
 			return Message{}, err
 		}
 	}
