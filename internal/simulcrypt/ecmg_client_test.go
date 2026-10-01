@@ -134,11 +134,6 @@ func TestECMGClientChannelAndStreamLifecycle(t *testing.T) {
 			serverDone <- err
 			return
 		}
-		msg, err = readTestMessage(conn)
-		if err != nil {
-			serverDone <- err
-			return
-		}
 		if msg.Type != MsgCWProvision {
 			serverDone <- fmt.Errorf("got message 0x%04x, want CW_provision", msg.Type)
 			return
@@ -170,6 +165,11 @@ func TestECMGClientChannelAndStreamLifecycle(t *testing.T) {
 			return
 		}
 
+		msg, err = readTestMessage(conn)
+		if err != nil {
+			serverDone <- err
+			return
+		}
 		if msg.Type != MsgStreamCloseReq {
 			serverDone <- fmt.Errorf("got message 0x%04x, want stream_close_request", msg.Type)
 			return
