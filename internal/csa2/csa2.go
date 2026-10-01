@@ -93,50 +93,67 @@ func (s *streamState) xor(data []byte) { for off:=0;off<len(data); { ks:=s.strea
 
 func Encrypt(data []byte, cw [8]byte) error {
  if len(data)<8 { return fmt.Errorf("CSA2 payload must be at least 8 bytes") }
+
  kk:=computeKey(cw)
- n:=len(data)/8
- residue:=len(data)%8
- blocks:=make([][8]byte,n+1)
- for i:=n-1;i>=0;i-- {
-  var b [8]byte
-  for j:=0;j<8;j++ { b[j]=data[i*8+j]^blocks[i+1][j] }
-  blocks[i]=blockEncrypt(&kk,b)
+ alen:=len(data)&^7
+
+ // Match libdvbcsa_encrypt(): encrypt the final block first, then
+ // process the preceding blocks backwards using CBC-style chaining.
+ last:=alen-8
+ var b [8]byte
+ copy(b[:],data[last:last+8])
+ b=blockEncrypt(&kk,b)
+ copy(data[last:last+8],b)
+
+ for i:=last-8;i>=0;i-=8 {
+  for j:=0;j<8;j++ { b[j]=data[i+j]^data[i+8+j] }
+  b=blockEncrypt(&kk,b)
+  copy(data[i:i+8],b)
  }
- copy(data[:8],blocks[0][:])
- var st streamState
- st.init(cw,blocks[0])
- for i:=1;i<n;i++ {
-  tmp:=make([]byte,8); copy(tmp,blocks[i][:]); st.xor(tmp); copy(data[i*8:],tmp)
- }
- if residue>0 {
-  tmp:=make([]byte,residue); st.xor(tmp); copy(data[n*8:],tmp)
+
+ // The first encrypted block is the stream-cipher IV. The stream stage
+ // processes everything after that block, including any residue bytes.
+ if len(data)>8 {
+  var st streamState
+  var iv [8]byte
+  copy(iv[:],data[:8])
+  st.init(cw,iv)
+  st.xor(data[8:])
  }
  return nil
 }
 
 func Decrypt(data []byte, cw [8]byte) error {
  if len(data)<8 { return fmt.Errorf("CSA2 payload must be at least 8 bytes") }
+
  kk:=computeKey(cw)
- n:=len(data)/8
- residue:=len(data)%8
- var ib [8]byte
- copy(ib[:],data[:8])
- var st streamState
- st.init(cw,ib)
- for i:=0;i<n;i++ {
-  block:=blockDecrypt(&kk,ib)
-  var next [8]byte
-  if i+1<n {
-   copy(next[:],data[(i+1)*8:(i+2)*8])
-   tmp:=next[:]; st.xor(tmp); copy(next[:],tmp)
-  } else {
-   for j:=range next { next[j]=0 }
-  }
-  for j:=0;j<8;j++ { data[i*8+j]=next[j]^block[j] }
-  ib=next
+
+ // Match libdvbcsa_decrypt(): remove the stream layer first, using the
+ // first 8-byte block as the IV, then reverse the block stage forward.
+ if len(data)>8 {
+  var st streamState
+  var iv [8]byte
+  copy(iv[:],data[:8])
+  st.init(cw,iv)
+  st.xor(data[8:])
  }
- if residue>0 {
-  tmp:=data[n*8:]; st.xor(tmp)
+
+ alen:=len(data)&^7
+ var b,prev [8]byte
+ b=blockDecrypt(&kk,func() [8]byte {
+  var x [8]byte
+  copy(x[:],data[:8])
+  return x
+ }())
+ copy(data[:8],b[:])
+
+ for i:=8;i<alen;i+=8 {
+  copy(prev[:],data[i-8:i])
+  copy(b[:],data[i:i+8])
+  for j:=0;j<8;j++ { b[j]^=prev[j] }
+  b=blockDecrypt(&kk,b)
+  copy(data[i:i+8],b[:])
  }
+
  return nil
 }
