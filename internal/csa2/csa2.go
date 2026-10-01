@@ -84,9 +84,11 @@ func (s *streamState) sboxUpdate() {
  s.p,s.q=(s7>>1)&1,s7&1
 }
 
-func (s *streamState) initRound(iv byte) {
+func (s *streamState) initRound(iv, in1, in2 byte, parity int) {
  nextA:=(s.A[10]^s.X^s.D^(iv>>4))&0xf
+ if parity == 0 { nextA ^= in1 } else { nextA ^= in2 }
  tmp:=(s.B[6]^s.B[9]^s.Y^iv)&0xf
+ if parity == 0 { tmp ^= in2 } else { tmp ^= in1 }
  if s.p!=0 { tmp=((tmp<<1)|((tmp>>3)&1))&0xf }
  for k:=10;k>1;k-- { s.A[k]=s.A[k-1]; s.B[k]=s.B[k-1] }
  s.A[1],s.B[1]=nextA,tmp
@@ -129,7 +131,11 @@ var streamOut=[16]byte{0x00,0x55,0x55,0x00,0xaa,0xff,0xff,0xaa,0xaa,0xff,0xff,0x
 func (s *streamState) init(cw, seed [8]byte) {
  for i:=0;i<4;i++ { s.A[1+2*i]=cw[i]>>4; s.A[2+2*i]=cw[i]&0xf; s.B[1+2*i]=cw[4+i]>>4; s.B[2+2*i]=cw[4+i]&0xf }
  for i:=0;i<8;i++ {
-  v:=seed[i]; s.initRound(v); s.initRound(swapNibble(v)); s.initRound(v); s.initRound(swapNibble(v))
+  v:=seed[i]; hi,lo:=v>>4,v&0xf
+  s.initRound(v,hi,lo,0)
+  s.initRound(swapNibble(v),lo,hi,1)
+  s.initRound(v,hi,lo,0)
+  s.initRound(swapNibble(v),lo,hi,1)
  }
 }
 
