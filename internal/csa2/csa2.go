@@ -62,114 +62,33 @@ var streamSBox = [7][32]uint8{
 	{0,3,2,2,3,0,0,1,3,0,1,3,1,2,2,1,1,0,3,3,0,1,1,2,2,3,1,0,2,3,0,2},
 }
 
-type streamState struct {
- A [11]uint8; B [11]uint8
- X,Y,Z uint8
- D,E,F uint8
- p,q,r uint8
-}
+type streamState struct { A [11]uint8; B [11]uint8; X,Y,Z uint8; D,E,F uint8; p,q,r uint8 }
 
-func (s *streamState) sboxUpdate() {
- a:=s.A
- s1:=streamSBox[0][(((a[4]&1)<<4)|(((a[1]>>2)&1)<<3)|(((a[6]>>1)&1)<<2)|(((a[7]>>3)&1)<<1)|(a[9]&1))]
- s2:=streamSBox[1][(((a[2]>>1)&1)<<4)|(((a[3]>>2)&1)<<3)|(((a[6]>>3)&1)<<2)|((a[7]&1)<<1)|((a[9]>>1)&1)]
- s3:=streamSBox[2][(((a[1]>>3)&1)<<4)|((a[2]&1)<<3)|(((a[5]>>1)&1)<<2)|(((a[5]>>3)&1)<<1)|((a[6]>>2)&1)]
- s4:=streamSBox[3][(((a[3]>>3)&1)<<4)|(((a[1]>>1)&1)<<3)|(((a[2]>>3)&1)<<2)|(((a[4]>>2)&1)<<1)|(a[8]&1)]
- s5:=streamSBox[4][(((a[5]>>2)&1)<<4)|(((a[4]>>3)&1)<<3)|((a[6]&1)<<2)|(((a[8]>>1)&1)<<1)|((a[9]>>2)&1)]
- s6:=streamSBox[5][(((a[3]>>1)&1)<<4)|(((a[4]>>1)&1)<<3)|((a[5]&1)<<2)|(((a[7]>>2)&1)<<1)|((a[9]>>3)&1)]
- s7:=streamSBox[6][(((a[2]>>2)&1)<<4)|((a[3]&1)<<3)|(((a[7]>>1)&1)<<2)|(((a[8]>>2)&1)<<1)|((a[8]>>3)&1)]
- s.X=((s4&1)<<3)|((s3&1)<<2)|(s2&2)|((s1&2)>>1)
- s.Y=((s6&1)<<3)|((s5&1)<<2)|(s4&2)|((s3&2)>>1)
- s.Z=((s2&1)<<3)|((s1&1)<<2)|(s6&2)|((s5&2)>>1)
- s.p,s.q=(s7>>1)&1,s7&1
-}
-
-func (s *streamState) initRound(iv, in1, in2 byte, parity int) {
- var extra byte
- nextA := s.A[10] ^ s.X ^ s.D
- if parity == 0 { nextA ^= in1 } else { nextA ^= in2 }
- nextB := s.B[7] ^ s.B[10] ^ s.Y
- if parity == 0 { nextB ^= in2 } else { nextB ^= in1 }
- if s.p != 0 { nextB = ((nextB << 1) | ((nextB >> 3) & 1)) & 0xf }
-
- extra = (((s.B[3]&1)<<3)^((s.B[6]&2)<<2)^((s.B[7]&4)<<1)^((s.B[9]&8))) |
-  (((s.B[6]&1)<<2)^((s.B[8]&2)<<1)^((s.B[3]&8)>>1)^(s.B[4]&4)) |
-  (((s.B[5]&8)>>2)^((s.B[8]&4)>>1)^((s.B[4]&1)<<1)^(s.B[5]&2)) |
-  (((s.B[9]&4)>>2)^((s.B[6]&8)>>3)^((s.B[3]&2)>>1)^(s.B[8]&1))
-
- s.D = s.E ^ s.Z ^ extra
- oldF := s.F
- if s.q != 0 {
-  sum := s.Z + s.E + s.r
-  s.F = sum & 0xf
-  s.r = (sum >> 4) & 1
- } else { s.F = s.E }
- s.E = oldF
-
- for k:=10;k>1;k-- { s.A[k]=s.A[k-1]; s.B[k]=s.B[k-1] }
- s.A[1]=nextA
- s.B[1]=nextB
- s.X,s.Y,s.Z,s.p,s.q = sboxValues()
- _ = iv
-}
-
-func (s *streamState) sboxValues() (uint8,uint8,uint8,uint8,uint8) {
- a:=s.A
- s1:=streamSBox[0][(((a[4]&1)<<4)|(((a[1]>>2)&1)<<3)|(((a[6]>>1)&1)<<2)|(((a[7]>>3)&1)<<1)|(a[9]&1))]
- s2:=streamSBox[1][(((a[2]>>1)&1)<<4)|(((a[3]>>2)&1)<<3)|(((a[6]>>3)&1)<<2)|((a[7]&1)<<1)|((a[9]>>1)&1)]
- s3:=streamSBox[2][(((a[1]>>3)&1)<<4)|((a[2]&1)<<3)|(((a[5]>>1)&1)<<2)|(((a[5]>>3)&1)<<1)|((a[6]>>2)&1)]
- s4:=streamSBox[3][(((a[3]>>3)&1)<<4)|(((a[1]>>1)&1)<<3)|(((a[2]>>3)&1)<<2)|(((a[4]>>2)&1)<<1)|(a[8]&1)]
- s5:=streamSBox[4][(((a[5]>>2)&1)<<4)|(((a[4]>>3)&1)<<3)|((a[6]&1)<<2)|(((a[8]>>1)&1)<<1)|((a[9]>>2)&1)]
- s6:=streamSBox[5][(((a[3]>>1)&1)<<4)|(((a[4]>>1)&1)<<3)|((a[5]&1)<<2)|(((a[7]>>2)&1)<<1)|((a[9]>>3)&1)]
- s7:=streamSBox[6][(((a[2]>>2)&1)<<4)|((a[3]&1)<<3)|(((a[7]>>1)&1)<<2)|(((a[8]>>2)&1)<<1)|((a[8]>>3)&1)]
- x:=((s4&1)<<3)|((s3&1)<<2)|(s2&2)|((s1&2)>>1)
- y:=((s6&1)<<3)|((s5&1)<<2)|(s4&2)|((s3&2)>>1)
- z:=((s2&1)<<3)|((s1&1)<<2)|(s6&2)|((s5&2)>>1)
- return x,y,z,(s7>>1)&1,s7&1
-}
-
-func (s *streamState) init(cw, seed [8]byte) {
- for i:=0;i<4;i++ {
-  s.A[1+2*i]=cw[i]>>4; s.A[2+2*i]=cw[i]&0xf
-  s.B[1+2*i]=cw[4+i]>>4; s.B[2+2*i]=cw[4+i]&0xf
- }
- s.A[9],s.A[10],s.B[9],s.B[10]=0,0,0,0
- s.X,s.Y,s.Z,s.D,s.E,s.F,s.p,s.q,s.r=0,0,0,0,0,0,0,0,0
- for i:=0;i<8;i++ {
-  v:=seed[i]
-  hi,lo:=v>>4,v&0xf
-  // The reference initializes four internal 2-bit rounds per input byte.
-  s.initRound(v,hi,lo,0)
-  s.initRound(v,lo,hi,1)
-  s.initRound(v,hi,lo,0)
-  s.initRound(v,lo,hi,1)
- }
-}
-
-
-var streamOut=[16]byte{0x00,0x55,0x55,0x00,0xaa,0xff,0xff,0xaa,0xaa,0xff,0xff,0xaa,0x00,0x55,0x55,0x00}
-
-func (s *streamState) init(cw, seed [8]byte) {
+func (s *streamState) init(cw, sb [8]byte) {
  for i:=0;i<4;i++ { s.A[1+2*i]=cw[i]>>4; s.A[2+2*i]=cw[i]&0xf; s.B[1+2*i]=cw[4+i]>>4; s.B[2+2*i]=cw[4+i]&0xf }
- for i:=0;i<8;i++ {
-  v:=seed[i]; hi,lo:=v>>4,v&0xf
-  s.initRound(v,hi,lo,0)
-  s.initRound(swapNibble(v),lo,hi,1)
-  s.initRound(v,hi,lo,0)
-  s.initRound(swapNibble(v),lo,hi,1)
- }
+ for i:=0;i<8;i++ { in1,in2:=sb[i]>>4,sb[i]&0xf; for j:=0;j<4;j++ { s.step(true,in1,in2,j) } }
 }
 
-func (s *streamState) xor(data []byte) {
- for i:=range data {
-  var v byte
-  v ^= streamOut[s.round()&0xf]&0xc0
-  v ^= streamOut[s.round()&0xf]&0x30
-  v ^= streamOut[s.round()&0xf]&0x0c
-  v ^= streamOut[s.round()&0xf]&0x03
-  data[i]^=v
- }
+func (s *streamState) step(bInit bool, in1,in2 uint8, j int) {
+ a:=s.A
+ s1:=streamSBox[0][(((a[4]&1)<<4)|(((a[1]>>2)&1)<<3)|(((a[6]>>1)&1)<<2)|(((a[7]>>3)&1)<<1)|(a[9]&1))]
+ s2:=streamSBox[1][(((a[2]>>1)&1)<<4)|(((a[3]>>2)&1)<<3)|(((a[6]>>3)&1)<<2)|((a[7]&1)<<1)|((a[9]>>1)&1)]
+ s3:=streamSBox[2][(((a[1]>>3)&1)<<4)|((a[2]&1)<<3)|(((a[5]>>1)&1)<<2)|(((a[5]>>3)&1)<<1)|((a[6]>>2)&1)]
+ s4:=streamSBox[3][(((a[3]>>3)&1)<<4)|(((a[1]>>1)&1)<<3)|(((a[2]>>3)&1)<<2)|(((a[4]>>2)&1)<<1)|(a[8]&1)]
+ s5:=streamSBox[4][(((a[5]>>2)&1)<<4)|(((a[4]>>3)&1)<<3)|((a[6]&1)<<2)|(((a[8]>>1)&1)<<1)|((a[9]>>2)&1)]
+ s6:=streamSBox[5][(((a[3]>>1)&1)<<4)|(((a[4]>>1)&1)<<3)|((a[5]&1)<<2)|(((a[7]>>2)&1)<<1)|((a[9]>>3)&1)]
+ s7:=streamSBox[6][(((a[2]>>2)&1)<<4)|((a[3]&1)<<3)|(((a[7]>>1)&1)<<2)|(((a[8]>>2)&1)<<1)|((a[8]>>3)&1)]
+ extra:=(((s.B[3]&1)<<3)^((s.B[6]&2)<<2)^((s.B[7]&4)<<1)^(s.B[9]&8))|(((s.B[6]&1)<<2)^((s.B[8]&2)<<1)^((s.B[3]&8)>>1)^(s.B[4]&4))|(((s.B[5]&8)>>2)^((s.B[8]&4)>>1)^((s.B[4]&1)<<1)^(s.B[5]&2))|(((s.B[9]&4)>>2)^((s.B[6]&8)>>3)^((s.B[3]&2)>>1)^(s.B[8]&1))
+ nextA:=s.A[10]^s.X; if bInit { if j%2==0 { nextA^=s.D^in1 } else { nextA^=s.D^in2 } }
+ nextB:=s.B[7]^s.B[10]^s.Y; if bInit { if j%2==0 { nextB^=in2 } else { nextB^=in1 } }; if s.p!=0 { nextB=((nextB<<1)|((nextB>>3)&1))&0xf }
+ s.D=s.E^s.Z^extra; nextE:=s.F; if s.q!=0 { s.F=s.Z+s.E+s.r; s.r=(s.F>>4)&1; s.F&=0xf } else { s.F=s.E }; s.E=nextE
+ for k:=10;k>1;k-- { s.A[k]=s.A[k-1]; s.B[k]=s.B[k-1] }; s.A[1]=nextA; s.B[1]=nextB
+ s.X=((s4&1)<<3)|((s3&1)<<2)|(s2&2)|((s1&2)>>1); s.Y=((s6&1)<<3)|((s5&1)<<2)|(s4&2)|((s3&2)>>1); s.Z=((s2&1)<<3)|((s1&1)<<2)|(s6&2)|((s5&2)>>1); s.p=(s7>>1)&1; s.q=s7&1
 }
+
+func (s *streamState) stream8() [8]byte { var out [8]byte; for i:=0;i<8;i++ { var op uint8; for j:=0;j<4;j++ { s.step(false,0,0,j); d:=s.D^(s.D>>1); op=(op<<2)|((((d>>1)&2)|(d&1))&3) }; out[i]=op }; return out }
+
+func (s *streamState) xor(data []byte) { for off:=0;off<len(data); { ks:=s.stream8(); n:=len(data)-off; if n>8 { n=8 }; for i:=0;i<n;i++ { data[off+i]^=ks[i] }; off+=n } }
 
 
 func Encrypt(data []byte, cw [8]byte) error {
