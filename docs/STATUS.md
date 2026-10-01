@@ -1,7 +1,7 @@
 # Project Status
 
 **Project:** panaccess-dvb-mux  
-**Status:** Phase 4.1 — DVB-SimulCrypt ECMG protocol foundation  
+**Status:** Phase 4.1 — DVB-SimulCrypt ECMG protocol foundation — VERIFIED ON inst05  
 **Updated:** 2026-10-01
 
 ## Phase 1 status
@@ -144,7 +144,7 @@ Phase 1 fixture remains the bitstream acceptance gate and is verified on `inst05
 
 ## Current phase
 
-### Phase 4.1 — DVB-SimulCrypt ECMG protocol foundation — IN PROGRESS
+### Phase 4.1 — DVB-SimulCrypt ECMG protocol foundation — VERIFIED ON inst05
 
 Phase 3.1 was verified on `inst05` after pulling commit `a7403e8`:
 
@@ -156,11 +156,19 @@ go build ./...      PASS
 
 Phase 4.1 has now added the initial ECMG ⇔ SCS TLV codec in `internal/simulcrypt/ecmg.go` with protocol version `0x03`, ECMG message-type constants, parameter-type constants, big-endian parameter helpers, and strict message/parameter length validation. Deterministic wire-format tests are in `internal/simulcrypt/ecmg_test.go`.
 
-The codec is deliberately transport-neutral at this step: it does not open TCP connections, negotiate a channel, generate ECMs, or expose CWs. Those behaviors will be added only after this wire-format layer is verified on `inst05`.
+The codec is deliberately transport-neutral at this step: it does not open TCP connections, negotiate a channel, generate ECMs, or expose CWs.
 
-ETSI TS 103 197 defines the ECMG ⇔ SCS generic message as protocol_version + message_type + message_length followed by TLV parameters, with ECMG/SCS protocol version `0x03`; the specified ECMG message types include channel_setup, stream_setup, CW_provision and ECM_response. citeturn4view0turn2view1turn3view1 The implementation will start with protocol framing, message-type constants, parameter encoding/decoding, and deterministic vectors before opening TCP sessions. No ECM generation is claimed yet.
+Validation on `inst05` after pulling commit `d9499e2`:
 
-ETSI TS 103 197 specifies ECMG ⇔ SCS as a TCP-based connection-oriented interface. The generic message contains protocol_version, message_type, message_length, followed by TLV parameters; ECMG/SCS uses protocol version `0x03`. Channel setup precedes stream setup, and CW_provision produces an ECM_response. citeturn4view0turn3view1
+```text
+go test ./...       PASS
+go test -race ./... PASS
+go build ./...      PASS
+```
+
+The ECMG codec is therefore **verified as a wire-format component**. This does not yet prove interoperability with a real ECMG server and does not claim ECM generation, CW exchange, TCP session management, or scrambling.
+
+ETSI TS 103 197 specifies ECMG ⇔ SCS as a TCP-based connection-oriented interface using protocol version `0x03`. Channel setup precedes stream setup, and CW_provision produces an ECM_response. The next implementation step is the TCP session/client layer, followed by a controlled interoperability test against an ECMG endpoint.
 
 **Specification compliance note:** the current implementation remains Go-based; the broader project requirement previously identified Rust or C++20 as the implementation target. This remains a separate compliance gap and should not be conflated with successful functional validation.
 
@@ -168,7 +176,8 @@ ETSI TS 103 197 specifies ECMG ⇔ SCS as a TCP-based connection-oriented interf
 
 - Phase 3.1 — PSI/CA service discovery model
 - Phase 4.1 — DVB-SimulCrypt ECMG protocol foundation
-- Phase 4.2 — DVB-SimulCrypt EMMG/MUX protocol foundation
+- Phase 4.2 — DVB-SimulCrypt ECMG TCP session/client and channel/stream lifecycle
+- Phase 4.3 — DVB-SimulCrypt EMMG/MUX protocol foundation
 - Phase 5 — ECM/EMM integration into the 5-stream service pipeline
 - Phase 6 — DVB-CSA2 scrambling engine integration
 - Phase 7 — 500+ service concurrency, NUMA/threading and performance tuning
