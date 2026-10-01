@@ -371,7 +371,7 @@ The encryption/decryption block chaining was corrected to match the public `libd
 
 External validation basis: the public libdvbcsa project documents CSA as a block cipher plus stream cipher using the same 64-bit control word, and its test suite provides deterministic encryption vectors. citeturn0search0turn0search8
 
-**Latest correction:** the `refStreamSBox`/`refStreamCDEF` table translation was malformed and caused the inst05 compile errors at `stream_ref.go:18-27`. It has now been regenerated directly from the pinned libdvbcsa reference, preserving the 7×32 S-box and 1024-entry CDEF table. **Verification remains pending `inst05`. The subsequent compile failure was traced to the CDEF table: unlike the 7×32 S-box, libdvbcsa defines CDEF as a flat 1024-entry array. The Go literal has now been corrected to a flat `[1024]uint16` initializer.**
+**Latest correction:** the `refStreamSBox`/`refStreamCDEF` table translation was malformed and caused the inst05 compile errors at `stream_ref.go:18-27`. It has now been regenerated directly from the pinned libdvbcsa reference, preserving the 7×32 S-box and 1024-entry CDEF table. **Verification remains pending `inst05`. The subsequent compile failure was traced to the CDEF table: unlike the 7×32 S-box, libdvbcsa defines CDEF as a flat 1024-entry array. The Go literal has now been corrected to a flat `[1024]uint16` initializer. A missing trailing comma in that multiline literal was then identified and corrected; verification remains pending `inst05`.**
 
 A Go array-to-slice compile issue in the CSA2 block chaining code was corrected after inst05 verification exposed it. The affected `copy()` calls now use `b[:]`.
 
