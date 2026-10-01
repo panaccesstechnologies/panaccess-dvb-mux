@@ -396,3 +396,7 @@ A Go array-to-slice compile issue in the CSA2 block chaining code was corrected 
 - Replaced the previous legacy `keyPerm` translation with an exact 64-bit basis-mask representation of upstream `libdvbcsa` `kperm[8][256]` semantics.
 - Commit: `5f87864076d45d8bcf2fc35bb1de4bddd8d7d6a4`.
 - Phase 6.1 remains **PENDING** until `inst05` KAT, full tests, race tests, and build pass.
+
+- Follow-up comparison against all 2048 upstream `kperm` entries found 10 incorrect basis masks in the previous translation; these have now been regenerated directly from `kperm[row][1<<bit]`.
+- Latest CSA2 key-schedule commit: `f32c9ec2d3421dcb6ce835be448f599ffe880200`.
+- Phase 6.1 remains **PENDING** until the inst05 KAT passes.
