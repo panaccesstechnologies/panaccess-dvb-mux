@@ -56,7 +56,7 @@ func refStreamInitRound(iv uint32, A, B *uint64, pqzyx, cfed *uint32) {
 	*A |= (((*A >> 40) & 0xf) ^ (*pqzyx & 0xf) ^ (*cfed & 0xf) ^ (iv >> 4)) & 0xf
 	tmp := (((*B >> 24) & 0xf) ^ ((*B >> 36) & 0xf) ^ ((*pqzyx >> 4) & 0xf) ^ iv) & 0xf
 	*B <<= 4
-	*B |= refStreamRotate(*pqzyx, tmp)
+	*B |= uint64(refStreamRotate(*pqzyx, tmp))
 	*cfed = refStreamCFED(*pqzyx, *cfed) ^ refStreamBSel(*B)
 	*pqzyx = refStreamSBoxes(*A)
 }
