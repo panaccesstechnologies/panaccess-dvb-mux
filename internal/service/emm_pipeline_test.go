@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/panaccesstechnologies/panaccess-dvb-mux/internal/mpegts"
 	"github.com/panaccesstechnologies/panaccess-dvb-mux/internal/simulcrypt"
 )
 
@@ -95,4 +96,42 @@ func TestEMMGToTSIntegration(t *testing.T) {
 	if got := p.Data[5:5+len(emmSection)]; string(got) != string(emmSection) { t.Fatalf("EMM mismatch: %x", got) }
 
 	if err := <-done; err != nil { t.Fatal(err) }
+}
+
+func TestEMMInserterTSPacketFormat(t *testing.T) {
+	s := Service{ServiceID: 101, EMM: []CAEndpoint{{CASystemID: 0x4afc, PID: 0x1ffe}}}
+	inserter, err := NewEMMInserterWithFormat(s, 0x4afc, 0, EMMTSPacketFormat)
+	if err != nil { t.Fatal(err) }
+
+	input := make([]byte, mpegts.PacketSize)
+	input[0] = mpegts.SyncByte
+	input[1] = 0x40 | 0x02 // PUSI + input PID 0x0002; MUX must replace PID.
+	input[2] = 0x02
+	input[3] = 0x12
+	for i := 4; i < len(input); i++ { input[i] = byte(i) }
+
+	pkts, err := inserter.InjectDatagram(input)
+	if err != nil { t.Fatal(err) }
+	if len(pkts) != 1 { t.Fatalf("got %d packets, want 1", len(pkts)) }
+	p := pkts[0]
+	if p.PID() != 0x1ffe { t.Fatalf("PID=0x%04x", p.PID()) }
+	if p.ContinuityCounter() != 2 { t.Fatalf("CC=%d", p.ContinuityCounter()) }
+	for i := 3; i < len(input); i++ {
+		if p.Data[i] != input[i] { t.Fatalf("byte %d changed", i) }
+	}
+}
+
+func TestEMMInserterTSPacketFormatRejectsInvalidDatagrams(t *testing.T) {
+	s := Service{ServiceID: 101, EMM: []CAEndpoint{{CASystemID: 0x4afc, PID: 0x1ffe}}}
+	inserter, err := NewEMMInserterWithFormat(s, 0x4afc, 0, EMMTSPacketFormat)
+	if err != nil { t.Fatal(err) }
+
+	if _, err := inserter.InjectDatagram(make([]byte, mpegts.PacketSize-1)); err == nil {
+		t.Fatal("expected short TS datagram to be rejected")
+	}
+	bad := make([]byte, mpegts.PacketSize)
+	bad[0] = 0x46
+	if _, err := inserter.InjectDatagram(bad); err == nil {
+		t.Fatal("expected invalid sync byte to be rejected")
+	}
 }
