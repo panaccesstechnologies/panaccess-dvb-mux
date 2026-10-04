@@ -1,6 +1,8 @@
 package simulcrypt
 
 const (
+	EMMGProtocolVersion byte = 0x03
+
 	// EMMG message types (ETSI TS 103 197).
 	EMMGMsgChannelSetup    uint16 = 0x0011
 	EMMGMsgChannelTest     uint16 = 0x0012
