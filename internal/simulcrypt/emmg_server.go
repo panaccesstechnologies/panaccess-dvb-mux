@@ -202,8 +202,8 @@ func (s *EMMGServer) serveTCP(conn net.Conn) {
 		case EMMGMsgDataProvision:
 			keep = c.handleDataProvision(msg)
 		default:
-			_ = c.writeError(EMMGMsgChannelError, EMMGErrUnknownMessage, fmt.Sprintf("unknown message type 0x%04X", msg.Type))
-			return
+			// ETSI TS 103 197: unknown message types shall be ignored.
+			continue
 		}
 		if !keep {
 			return
@@ -300,7 +300,12 @@ func (c *emmgConnection) handleChannelSetup(m Message) bool {
 }
 
 func (c *emmgConnection) handleChannelTest(m Message) bool {
-	if !c.channelReady {
+	client, ok := getUint32(m, EMMGParamClientID)
+	channel, ok2 := getUint16(m, EMMGParamDataChannelID)
+	if !ok || !ok2 {
+		return c.fail(EMMGMsgChannelError, EMMGErrMissingParameter, "missing channel test parameter")
+	}
+	if !c.channelReady || client != c.clientID || channel != c.dataChannelID {
 		return c.fail(EMMGMsgChannelError, EMMGErrUnknownChannel, "channel is not open")
 	}
 	return c.write(NewMessage(EMMGMsgChannelStatus,
@@ -365,7 +370,13 @@ func (c *emmgConnection) handleStreamSetup(m Message) bool {
 }
 
 func (c *emmgConnection) handleStreamTest(m Message) bool {
-	if !c.streamReady {
+	client, ok := getUint32(m, EMMGParamClientID)
+	channel, ok2 := getUint16(m, EMMGParamDataChannelID)
+	stream, ok3 := getUint16(m, EMMGParamDataStreamID)
+	if !ok || !ok2 || !ok3 {
+		return c.fail(EMMGMsgStreamError, EMMGErrMissingParameter, "missing stream test parameter")
+	}
+	if !c.streamReady || client != c.clientID || channel != c.dataChannelID || stream != c.dataStreamID {
 		return c.fail(EMMGMsgStreamError, EMMGErrUnknownStream, "stream is not open")
 	}
 	return c.write(NewMessage(EMMGMsgStreamStatus,
@@ -378,7 +389,13 @@ func (c *emmgConnection) handleStreamTest(m Message) bool {
 }
 
 func (c *emmgConnection) handleStreamClose(m Message) bool {
-	if !c.streamReady {
+	client, ok := getUint32(m, EMMGParamClientID)
+	channel, ok2 := getUint16(m, EMMGParamDataChannelID)
+	stream, ok3 := getUint16(m, EMMGParamDataStreamID)
+	if !ok || !ok2 || !ok3 {
+		return c.fail(EMMGMsgStreamError, EMMGErrMissingParameter, "missing stream close parameter")
+	}
+	if !c.streamReady || client != c.clientID || channel != c.dataChannelID || stream != c.dataStreamID {
 		return c.fail(EMMGMsgStreamError, EMMGErrUnknownStream, "stream is not open")
 	}
 	if err := c.write(NewMessage(EMMGMsgStreamCloseResp,
