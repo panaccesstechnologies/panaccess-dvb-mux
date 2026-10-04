@@ -88,6 +88,103 @@ func (c *EMMGClient) Provision(datagrams ...[]byte) error {
 	return c.writeMessage(msg)
 }
 
+
+func (c *EMMGClient) ProvisionUDP(address string, datagrams ...[]byte) error {
+	if address == "" {
+		return fmt.Errorf("EMMG UDP address is empty")
+	}
+	if len(datagrams) == 0 {
+		return fmt.Errorf("at least one EMM datagram is required")
+	}
+
+	msg := EMMGDataProvision{
+		ClientID:      c.cfg.ClientID,
+		DataChannelID: c.cfg.DataChannelID,
+		DataStreamID:  c.cfg.DataStreamID,
+		DataID:        c.cfg.DataID,
+		Datagrams:     datagrams,
+	}.UDPMessage()
+
+	data, err := Encode(msg)
+	if err != nil {
+		return fmt.Errorf("encode EMMG UDP data_provision: %w", err)
+	}
+
+	remote, err := net.ResolveUDPAddr("udp", address)
+	if err != nil {
+		return fmt.Errorf("resolve EMMG UDP address %q: %w", address, err)
+	}
+
+	conn, err := net.DialUDP("udp", nil, remote)
+	if err != nil {
+		return fmt.Errorf("dial EMMG UDP address %q: %w", address, err)
+	}
+	defer conn.Close()
+
+	if c.cfg.IOTimeout > 0 {
+		if err := conn.SetWriteDeadline(time.Now().Add(c.cfg.IOTimeout)); err != nil {
+			return fmt.Errorf("set EMMG UDP write deadline: %w", err)
+		}
+	}
+
+	if _, err := conn.Write(data); err != nil {
+		return fmt.Errorf("send EMMG UDP data_provision: %w", err)
+	}
+
+	return nil
+}
+
+// RequestBandwidth requests a stream allocation in kbit/s.
+func (c *EMMGClient) RequestBandwidth(requested uint16) (uint16, error) {
+	return c.requestBandwidth(&requested)
+}
+
+// QueryBandwidth queries the current allocation.
+func (c *EMMGClient) QueryBandwidth() (uint16, error) {
+	return c.requestBandwidth(nil)
+}
+
+func (c *EMMGClient) requestBandwidth(requested *uint16) (uint16, error) {
+	if c.conn == nil {
+		return 0, fmt.Errorf("EMMG client not connected")
+	}
+
+	params := []Parameter{
+		Uint32Parameter(EMMGParamClientID, c.cfg.ClientID),
+		Uint16Parameter(EMMGParamDataChannelID, c.cfg.DataChannelID),
+		Uint16Parameter(EMMGParamDataStreamID, c.cfg.DataStreamID),
+	}
+	if requested != nil {
+		params = append(params, Uint16Parameter(EMMGParamBandwidth, *requested))
+	}
+
+	resp, err := c.exchange(
+		NewMessage(EMMGMsgStreamBWRequest, params...),
+		EMMGMsgStreamBWAlloc,
+		EMMGMsgStreamError,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("EMMG bandwidth request: %w", err)
+	}
+
+	for _, typ := range []uint16{
+		EMMGParamClientID,
+		EMMGParamDataChannelID,
+		EMMGParamDataStreamID,
+	} {
+		if _, ok := resp.First(typ); !ok {
+			return 0, fmt.Errorf("EMMG bandwidth allocation missing parameter 0x%04x", typ)
+		}
+	}
+
+	raw, ok := resp.First(EMMGParamBandwidth)
+	if !ok {
+		return 0, nil
+	}
+
+	return Uint16Value(Parameter{Type: EMMGParamBandwidth, Value: raw})
+}
+
 func (c *EMMGClient) TestStream() error {
 	if c.conn == nil { return fmt.Errorf("EMMG client not connected") }
 	msg := NewMessage(EMMGMsgStreamTest,
