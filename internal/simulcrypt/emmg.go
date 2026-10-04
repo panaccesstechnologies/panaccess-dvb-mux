@@ -14,7 +14,7 @@ const (
 	EMMGMsgStreamError     uint16 = 0x0116
 	EMMGMsgStreamBWRequest uint16 = 0x0117
 	EMMGMsgStreamBWAlloc   uint16 = 0x0118
-	EMMGMsgDataProvision   uint16 = 0x0201
+	EMMGMsgDataProvision   uint16 = 0x0211
 )
 
 const (
@@ -46,6 +46,21 @@ func (d EMMGDataProvision) Message() Message {
 		Uint32Parameter(EMMGParamClientID, d.ClientID),
 		Uint16Parameter(EMMGParamDataChannelID, d.DataChannelID),
 		Uint16Parameter(EMMGParamDataStreamID, d.DataStreamID),
+		Uint16Parameter(EMMGParamDataID, d.DataID),
+	}
+	for _, datagram := range d.Datagrams {
+		params = append(params, BytesParameter(EMMGParamDatagram, datagram))
+	}
+	return NewMessage(EMMGMsgDataProvision, params...)
+}
+
+    
+// UDPMessage returns an ETSI EMMG data_provision message for UDP transport.
+// UDP data_provision contains client_id, data_id and one or more datagrams.
+// data_channel_id and data_stream_id are intentionally omitted.
+func (d EMMGDataProvision) UDPMessage() Message {
+	params := []Parameter{
+		Uint32Parameter(EMMGParamClientID, d.ClientID),
 		Uint16Parameter(EMMGParamDataID, d.DataID),
 	}
 	for _, datagram := range d.Datagrams {
