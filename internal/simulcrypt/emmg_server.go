@@ -314,6 +314,12 @@ func (c *emmgConnection) handleChannelClose(m Message) bool {
 	if c.streamReady {
 		c.removeStream()
 	}
+	if c.channelReady {
+		c.server.mu.Lock()
+		delete(c.server.channels, emmgChannelKey{clientID: c.clientID, channel: c.dataChannelID})
+		c.server.mu.Unlock()
+		c.channelReady = false
+	}
 	return true
 }
 
@@ -527,7 +533,14 @@ func udpAddr(addr string) *net.UDPAddr {
 	if err != nil {
 		p = 0
 	}
-	return &net.UDPAddr{IP: net.ParseIP(host), Port: p}
+	if host == "" {
+		return &net.UDPAddr{Port: p}
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return &net.UDPAddr{Port: p}
+	}
+	return &net.UDPAddr{IP: ip, Port: p}
 }
 
 func getUint8(m Message, typ uint16) (byte, bool) {
